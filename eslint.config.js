@@ -16,7 +16,7 @@ export default [
     },
     plugins: { '@typescript-eslint': tsPlugin },
     rules: {
-      ...tsPlugin.configs['recommended'].rules,
+      ...tsPlugin.configs.recommended.rules,
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
