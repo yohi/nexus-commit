@@ -1,0 +1,16 @@
+{
+  "name": "nexus-commit",
+  "build": { "dockerfile": "Dockerfile" },
+  "postCreateCommand": "npm ci",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "vitest.explorer"
+      ]
+    }
+  },
+  "remoteUser": "node",
+  "runArgs": ["--network=host"]
+}
