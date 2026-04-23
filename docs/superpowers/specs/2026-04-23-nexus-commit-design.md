@@ -112,7 +112,7 @@ diff のハンクから識別子っぽいトークンを正規表現で抽出し
 | `src/keywords.ts` | diff 文字列 → 識別子候補配列（頻度順上位 N） | なし（純粋） | 純粋ユニット |
 | `src/truncate.ts` | diff + context の総文字数を上限内に切り詰め（予算配分） | なし（純粋） | 純粋ユニット |
 | `src/prompt.ts` | system / user プロンプト生成（Conventional Commits 指示 + 言語 + ヒント） | なし（純粋） | 純粋ユニット |
-| `src/config.ts` | env + flags → `Config` へ解決、バリデーション | `process.env` | 環境差替で単体 |
+| `src/config.ts` | env + flags → `Config` へ解決、バリデーション | env + flags 引数（純粋） | 純粋ユニット |
 | `src/flags.ts` | 手書き軽量 CLI パーサ | なし | 純粋ユニット |
 | `src/logger.ts` | 色付き出力、`info` / `warn` / `error` / `dim` | `picocolors` | スモーク |
 | `src/types.ts` | 共通型定義（`Config`, `NexusResult`, `GeneratedMessage` 等） | なし | 型チェックのみ |
@@ -536,6 +536,7 @@ nexus-commit/
 - `"customizations.vscode.extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode", "vitest.explorer"]`
 - `"remoteUser": "node"`
 - `"runArgs": ["--network=host"]`（ホスト上の Nexus / Ollama へアクセス）
+  - **Linux 専用**: macOS / Windows では `--network=host` がホストネットワークに繋がらないため、代わりに Nexus / Ollama の URL を `http://host.docker.internal:<port>` に設定して使用すること（`NEXUS_API_URL` / `NEXUS_COMMIT_LLM_URL` 環境変数で上書き可能）
 
 ---
 
