@@ -72,7 +72,7 @@ diff のハンクから識別子っぽいトークンを正規表現で抽出し
 
 単一プロセス CLI。I/O 層（git / Nexus / LLM / ターミナル）と純粋ロジック層を明確に分離する。
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │ src/bin/nxc.ts  (entrypoint: flags解釈 + 対話フロー制御) │
 └───────────┬──────────────────────────────────┬──────────┘
@@ -143,7 +143,7 @@ export interface LlmClient {
 
 ### 4.1 実行シーケンス
 
-```
+```text
 1. parseFlags(argv)
    → Flags { mode, dryRun, lang?, model?, useContext, ... }
 
@@ -296,7 +296,7 @@ export interface Config {
 
 ### 7.1 system プロンプト（`ja` 例）
 
-```
+```text
 あなたは熟練ソフトウェアエンジニアです。
 以下の git diff と関連コンテキストを読み、Conventional Commits v1.0.0 に厳格に準拠した
 コミットメッセージを1件だけ、日本語で生成してください。
@@ -312,7 +312,7 @@ export interface Config {
 
 ### 7.2 user プロンプト構造
 
-````
+````text
 # 変更ファイル
 <files をリスト>
 
@@ -368,7 +368,7 @@ try {
 
 ### 8.3 Nexus フォールバック時 UX
 
-```
+```text
 ⚠  Nexus サーバーに接続できませんでした (http://localhost:8080)
    コンテキストなしで続行します。
 ```
@@ -417,7 +417,7 @@ try {
 - contexts 空のときセクション自体を省略
 - hint 指定時に user prompt 末尾へ追記
 
-**`config.load(env, flags)`**
+**`loadConfig(env, flags)`**
 - フラグが env を上書き
 - 未指定時はデフォルト
 - 不正 `lang` / `maxChars` で throw
@@ -435,7 +435,7 @@ try {
 
 ### 9.3 ファイル配置
 
-```
+```text
 tests/
 ├── keywords.test.ts
 ├── truncate.test.ts
@@ -461,7 +461,7 @@ tests/
 
 ## 10. ディレクトリ構造（最終成果物）
 
-```
+```text
 nexus-commit/
 ├── .devcontainer/
 │   ├── devcontainer.json          # Node 22 / TS 開発環境
