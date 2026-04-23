@@ -1,0 +1,17 @@
+{
+  "name": "nexus-commit",
+  "build": { "dockerfile": "Dockerfile" },
+  "postCreateCommand": "npm ci",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "vitest.explorer"
+      ]
+    }
+  },
+  "remoteUser": "node",
+  // Required to access local LLM endpoints (e.g. Ollama) running on the host
+  "runArgs": ["--network=host"]
+}
