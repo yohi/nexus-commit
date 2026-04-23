@@ -12,5 +12,6 @@
     }
   },
   "remoteUser": "node",
+  // Required to access local LLM endpoints (e.g. Ollama) running on the host
   "runArgs": ["--network=host"]
 }
