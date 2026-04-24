@@ -76,4 +76,11 @@ describe('extract', () => {
     expect(kw).not.toContain('ab');
     expect(kw).toContain('abc');
   });
+
+  it('allows 2-char identifiers followed by a call-pattern', () => {
+    const diff = '+const ab = 1; fn();';
+    const kw = extract(diff);
+    expect(kw).toContain('fn');
+    expect(kw).not.toContain('ab');
+  });
 });

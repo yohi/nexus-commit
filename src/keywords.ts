@@ -74,7 +74,7 @@ const TS_RESERVED = new Set([
   'Set',
 ]);
 
-const IDENTIFIER_RE = /\b[a-zA-Z_$][a-zA-Z0-9_$]{1,}\b/g;
+const IDENTIFIER_RE = /\b[a-zA-Z_$][a-zA-Z0-9_$]+\b/g;
 
 export function extract(diff: string, limit = 20): string[] {
   if (!diff) {

@@ -97,4 +97,12 @@ describe('prompt.build', () => {
     expect(user).not.toContain('\r');
     expect(user).toContain('line1\nline2');
   });
+
+  it('handles diffs containing triple-backtick code fences', () => {
+    const diff = '+const code = ` ```js\\n console.log("hi"); \\n ``` `;';
+    const { user } = build({ diff, contexts: [], files: [], lang: 'ja' });
+    expect(user).toContain('````diff');
+    expect(user).toContain('````');
+    expect(user).toContain(diff);
+  });
 });

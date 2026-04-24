@@ -60,11 +60,12 @@ function buildUser(input: PromptInput): string {
   }
 
   const cleanedDiff = input.diff.replace(ANSI_RE, '');
+  const fence = cleanedDiff.includes('```') ? '````' : '```';
   parts.push('');
   parts.push('# Diff');
-  parts.push('```diff');
+  parts.push(`${fence}diff`);
   parts.push(cleanedDiff);
-  parts.push('```');
+  parts.push(fence);
 
   if (input.hint) {
     parts.push('');

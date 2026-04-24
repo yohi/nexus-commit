@@ -67,6 +67,12 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ NEXUS_COMMIT_MAX_CHARS: 'abc' }, baseFlags)).toThrow(
       /Invalid maxChars/,
     );
+    expect(() => loadConfig({ NEXUS_COMMIT_MAX_CHARS: '3000ms' }, baseFlags)).toThrow(
+      /Invalid maxChars/,
+    );
+    expect(() => loadConfig({ NEXUS_COMMIT_MAX_CHARS: '1.5' }, baseFlags)).toThrow(
+      /Invalid maxChars/,
+    );
   });
 
   it('throws on zero maxChars', () => {
@@ -77,7 +83,13 @@ describe('loadConfig', () => {
 
   it('throws on negative timeout', () => {
     expect(() => loadConfig({ NEXUS_COMMIT_LLM_TIMEOUT_MS: '-1' }, baseFlags)).toThrow(
-      /Invalid timeout/,
+      /Invalid llmTimeoutMs/,
+    );
+    expect(() => loadConfig({ NEXUS_COMMIT_LLM_TIMEOUT_MS: '3000ms' }, baseFlags)).toThrow(
+      /Invalid llmTimeoutMs/,
+    );
+    expect(() => loadConfig({ NEXUS_COMMIT_LLM_TIMEOUT_MS: '1.5' }, baseFlags)).toThrow(
+      /Invalid llmTimeoutMs/,
     );
   });
 

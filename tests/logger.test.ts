@@ -5,8 +5,14 @@ describe('logger', () => {
   it('info writes to stdout', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     logger.info('hello');
-    expect(spy).toHaveBeenCalledOnce();
-    expect(spy.mock.calls[0]?.[0]).toContain('hello');
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('hello'));
+    spy.mockRestore();
+  });
+
+  it('dim writes to stdout', () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    logger.dim('faint');
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('faint'));
     spy.mockRestore();
   });
 

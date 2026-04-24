@@ -1,17 +1,18 @@
 import type { Config, Lang } from './types.js';
 import type { Flags } from './flags.js';
 
-function parsePositiveInt(raw: string | undefined, fallback: number, name: string): number {
+function parsePositiveInt(raw: string | undefined, fallback: number, label: string): number {
   if (raw === undefined) {
     return fallback;
   }
 
-  const n = Number.parseInt(raw, 10);
-  if (!Number.isFinite(n) || Number.isNaN(n) || n <= 0) {
-    if (name === 'maxChars') {
-      throw new Error(`Invalid maxChars: ${raw}`);
-    }
-    throw new Error(`Invalid timeout for ${name}: ${raw}`);
+  if (!/^\d+$/.test(raw)) {
+    throw new Error(`Invalid ${label}: ${raw}`);
+  }
+
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0 || !Number.isInteger(n)) {
+    throw new Error(`Invalid ${label}: ${raw}`);
   }
 
   return n;
