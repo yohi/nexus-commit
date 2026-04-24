@@ -6,7 +6,7 @@ const mkDiff = (blocks: string[]): string =>
   blocks
     .map((b) => {
       const prefix = b.slice(0, 4);
-      return 'diff --git a/' + prefix + '.ts b/' + prefix + '.ts\n' + b;
+      return `diff --git a/${prefix}.ts b/${prefix}.ts\n${b}`;
     })
     .join('\n');
 
