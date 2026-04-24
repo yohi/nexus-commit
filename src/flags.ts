@@ -25,6 +25,8 @@ function requireNext(argv: string[], i: number, flag: string): string {
 export function parseFlags(argv: string[]): Flags {
   const flags: Flags = {
     diffMode: 'staged',
+    lang: undefined,
+    model: undefined,
     dryRun: false,
     useContext: true,
     help: false,

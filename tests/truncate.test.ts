@@ -3,7 +3,12 @@ import { build } from '../src/truncate.js';
 import type { NexusResult } from '../src/types.js';
 
 const mkDiff = (blocks: string[]): string =>
-  blocks.map((b) => `diff --git a/${b.slice(0, 4)}.ts b/${b.slice(0, 4)}.ts\n${b}`).join('\n');
+  blocks
+    .map((b) => {
+      const prefix = b.slice(0, 4);
+      return `diff --git a/${prefix}.ts b/${prefix}.ts\n${b}`;
+    })
+    .join('\n');
 
 describe('truncate.build', () => {
   it('returns input unchanged when within budget', () => {
