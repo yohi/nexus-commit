@@ -1,0 +1,11 @@
+---
+exclude_paths:
+  - "dist/**"
+  - "node_modules/**"
+  - "coverage/**"
+  - "src/prompt.ts"
+  - "tests/truncate.test.ts"
+
+metric:
+  exclude_paths:
+    - "tests/**"
