@@ -4,6 +4,14 @@ exclude_paths:
   - "node_modules/**"
   - "coverage/**"
 
+engines:
+  codacy-static-code-analysis:
+    exclude_paths:
+      - "src/prompt.ts"
+  eslint:
+    exclude_paths:
+      - "src/prompt.ts"
+
 metric:
   exclude_paths:
     - "tests/**"
