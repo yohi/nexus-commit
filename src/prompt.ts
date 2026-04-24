@@ -14,8 +14,7 @@ export interface PromptOutput {
 }
 
 const CC_TYPES = 'feat / fix / docs / style / refactor / perf / test / build / ci / chore / revert';
-const ESC = String.fromCharCode(27);
-const ANSI_RE = new RegExp(`${ESC}\\[[0-9;]*m`, 'g');
+const ANSI_RE = /\u001b\[[0-9;]*m/g;
 
 function buildSystem(lang: Lang): string {
   const langClause = lang === 'ja' ? '日本語で' : 'in English';
@@ -61,11 +60,13 @@ function buildUser(input: PromptInput): string {
   }
 
   const cleanedDiff = input.diff.replace(ANSI_RE, '');
+  const maxTicks = Math.max(...[...cleanedDiff.matchAll(/`+/g)].map((m) => m[0].length), 0);
+  const fence = '`'.repeat(Math.max(3, maxTicks + 1));
   parts.push('');
   parts.push('# Diff');
-  parts.push('```diff');
+  parts.push(`${fence}diff`);
   parts.push(cleanedDiff);
-  parts.push('```');
+  parts.push(fence);
 
   if (input.hint) {
     parts.push('');
