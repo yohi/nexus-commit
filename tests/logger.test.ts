@@ -6,6 +6,7 @@ describe('logger', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     logger.info('hello');
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('hello'));
+    expect(spy).toHaveBeenCalledTimes(1);
     spy.mockRestore();
   });
 
@@ -13,6 +14,7 @@ describe('logger', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     logger.dim('faint');
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('faint'));
+    expect(spy).toHaveBeenCalledTimes(1);
     spy.mockRestore();
   });
 
@@ -20,6 +22,7 @@ describe('logger', () => {
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     logger.warn('warning');
     expect(spy).toHaveBeenCalledOnce();
+    expect(spy).toHaveBeenCalledTimes(1);
     spy.mockRestore();
   });
 
@@ -27,6 +30,7 @@ describe('logger', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     logger.error('oops');
     expect(spy).toHaveBeenCalledOnce();
+    expect(spy).toHaveBeenCalledTimes(1);
     spy.mockRestore();
   });
 });

@@ -14,6 +14,7 @@ export interface PromptOutput {
 }
 
 const CC_TYPES = 'feat / fix / docs / style / refactor / perf / test / build / ci / chore / revert';
+// eslint-disable-next-line no-control-regex
 const ANSI_RE = /\x1b\[[0-9;]*m/g;
 
 function buildSystem(lang: Lang): string {
@@ -60,7 +61,8 @@ function buildUser(input: PromptInput): string {
   }
 
   const cleanedDiff = input.diff.replace(ANSI_RE, '');
-  const fence = cleanedDiff.includes('```') ? '````' : '```';
+  const maxTicks = Math.max(...[...cleanedDiff.matchAll(/`+/g)].map((m) => m[0].length), 0);
+  const fence = '`'.repeat(Math.max(3, maxTicks + 1));
   parts.push('');
   parts.push('# Diff');
   parts.push(`${fence}diff`);

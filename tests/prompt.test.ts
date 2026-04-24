@@ -88,7 +88,7 @@ describe('prompt.build', () => {
     const diff = '\x1b[32m+green\x1b[0m\n-\x1b[31mred\x1b[0m';
     const { user } = build({ diff, contexts: [], files: [], lang: 'ja' });
     expect(user).not.toContain(String.fromCharCode(27));
-    expect(user).toContain('+green');
+    expect(user).toContain('\n```diff\n+green\n-red\n```');
   });
 
   it('normalizes CRLF to LF in context content', () => {
@@ -98,11 +98,11 @@ describe('prompt.build', () => {
     expect(user).toContain('line1\nline2');
   });
 
-  it('handles diffs containing triple-backtick code fences', () => {
-    const diff = '+const code = ` ```js\\n console.log("hi"); \\n ``` `;';
+  it('handles diffs containing multiple backtick code fences', () => {
+    const diff = '+const code = ` ```js\\n console.log("hi"); \\n ``` `;\n+const more = ` ```` `';
     const { user } = build({ diff, contexts: [], files: [], lang: 'ja' });
-    expect(user).toContain('````diff');
-    expect(user).toContain('````');
+    expect(user).toContain('\n`````diff\n');
+    expect(user).toContain('\n`````');
     expect(user).toContain(diff);
   });
 });

@@ -81,7 +81,7 @@ describe('loadConfig', () => {
     );
   });
 
-  it('throws on negative timeout', () => {
+  it('throws on invalid llmTimeoutMs (negative or non-numeric)', () => {
     expect(() => loadConfig({ NEXUS_COMMIT_LLM_TIMEOUT_MS: '-1' }, baseFlags)).toThrow(
       /Invalid llmTimeoutMs/,
     );
@@ -91,6 +91,19 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ NEXUS_COMMIT_LLM_TIMEOUT_MS: '1.5' }, baseFlags)).toThrow(
       /Invalid llmTimeoutMs/,
     );
+  });
+
+  it('throws on unsafe integer', () => {
+    const tooLarge = (Number.MAX_SAFE_INTEGER + 1).toString();
+    expect(() => loadConfig({ NEXUS_COMMIT_MAX_CHARS: tooLarge }, baseFlags)).toThrow(
+      /Invalid maxChars/,
+    );
+  });
+
+  it('accepts MAX_SAFE_INTEGER', () => {
+    const maxSafe = Number.MAX_SAFE_INTEGER.toString();
+    const cfg = loadConfig({ NEXUS_COMMIT_MAX_CHARS: maxSafe }, baseFlags);
+    expect(cfg.maxChars).toBe(Number.MAX_SAFE_INTEGER);
   });
 
   it('--no-context propagates to useContext:false', () => {

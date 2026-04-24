@@ -1,5 +1,5 @@
-import type { Config, Lang } from './types.js';
-import type { Flags } from './flags.js';
+import { ALLOWED_LANGS, type Config, type Lang } from './types.js';
+import { isLang, type Flags } from './flags.js';
 
 function parsePositiveInt(raw: string | undefined, fallback: number, label: string): number {
   if (raw === undefined) {
@@ -11,7 +11,7 @@ function parsePositiveInt(raw: string | undefined, fallback: number, label: stri
   }
 
   const n = Number(raw);
-  if (!Number.isFinite(n) || n <= 0 || !Number.isInteger(n)) {
+  if (n <= 0 || !Number.isSafeInteger(n)) {
     throw new Error(`Invalid ${label}: ${raw}`);
   }
 
@@ -23,8 +23,8 @@ function parseLang(raw: string | undefined, fallback: Lang): Lang {
     return fallback;
   }
 
-  if (raw !== 'ja' && raw !== 'en') {
-    throw new Error(`Invalid lang: ${raw} (allowed: ja, en)`);
+  if (!isLang(raw)) {
+    throw new Error(`Invalid lang: ${raw} (allowed: ${ALLOWED_LANGS.join(', ')})`);
   }
 
   return raw;
