@@ -70,9 +70,7 @@ function truncateContexts(contexts: NexusResult[], budget: number): NexusResult[
     }
 
     const removed = remaining.splice(longestIdx, 1)[0];
-    if (removed) {
-      total -= removed.content.length;
-    }
+    total -= removed.content.length;
   }
 
   return remaining;
