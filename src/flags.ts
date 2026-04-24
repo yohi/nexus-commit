@@ -23,27 +23,40 @@ function requireNext(argv: string[], i: number, flag: string): string {
 }
 
 export function parseFlags(argv: string[]): Flags {
-  const flags: Flags = {
-    diffMode: 'staged',
-    lang: undefined,
-    model: undefined,
-    dryRun: false,
-    useContext: true,
-    help: false,
-    version: false,
-  };
+  const flags = Object.create(null) as Flags;
+  flags.diffMode = 'staged';
+  flags.dryRun = false;
+  flags.useContext = true;
+  flags.help = false;
+  flags.version = false;
+  flags.lang = undefined;
+  flags.model = undefined;
+
+  let diffModeExplicitlySet = false;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     switch (arg) {
       case '--staged':
+        if (diffModeExplicitlySet && flags.diffMode !== 'staged') {
+          throw new Error('Conflicting diff mode flags specified');
+        }
         flags.diffMode = 'staged';
+        diffModeExplicitlySet = true;
         break;
       case '--unstaged':
+        if (diffModeExplicitlySet && flags.diffMode !== 'unstaged') {
+          throw new Error('Conflicting diff mode flags specified');
+        }
         flags.diffMode = 'unstaged';
+        diffModeExplicitlySet = true;
         break;
       case '--all':
+        if (diffModeExplicitlySet && flags.diffMode !== 'all') {
+          throw new Error('Conflicting diff mode flags specified');
+        }
         flags.diffMode = 'all';
+        diffModeExplicitlySet = true;
         break;
       case '--dry-run':
         flags.dryRun = true;

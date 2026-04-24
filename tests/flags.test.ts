@@ -80,4 +80,10 @@ describe('parseFlags', () => {
   it('throws on unknown flag', () => {
     expect(() => parseFlags(['--unknown'])).toThrow(/Unknown flag/);
   });
+
+  it('throws on conflicting diff mode flags', () => {
+    expect(() => parseFlags(['--staged', '--all'])).toThrow(/Conflicting diff mode flags/);
+    expect(() => parseFlags(['--unstaged', '--staged'])).toThrow(/Conflicting diff mode flags/);
+    expect(() => parseFlags(['--all', '--unstaged'])).toThrow(/Conflicting diff mode flags/);
+  });
 });
