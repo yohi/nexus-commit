@@ -1,0 +1,11 @@
+---
+exclude_paths:
+  - "dist/**"
+  - "node_modules/**"
+  - "coverage/**"
+
+metric:
+  exclude_paths:
+    - "tests/**"
+
+# Engines configuration can be further refined here if specific tool noise persists.
