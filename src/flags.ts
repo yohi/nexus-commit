@@ -14,7 +14,7 @@ export interface Flags {
 
 function requireNext(argv: string[], i: number, flag: string): string {
   const value = argv[i + 1];
-  if (value === undefined || value.startsWith('-')) {
+  if (typeof value !== 'string' || value.startsWith('-')) {
     throw new Error(`Flag ${flag} requires a value`);
   }
   return value;

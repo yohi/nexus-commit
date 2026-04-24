@@ -6,7 +6,7 @@ describe('logger', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     logger.info('hello');
     expect(spy).toHaveBeenCalledOnce();
-    expect(spy.mock.calls[0]![0]).toContain('hello');
+    expect(spy.mock.calls[0]?.[0]).toContain('hello');
     spy.mockRestore();
   });
 

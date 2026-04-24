@@ -14,8 +14,7 @@ export interface PromptOutput {
 }
 
 const CC_TYPES = 'feat / fix / docs / style / refactor / perf / test / build / ci / chore / revert';
-const ESC = String.fromCharCode(27);
-const ANSI_RE = new RegExp(`${ESC}\\[[0-9;]*m`, 'g');
+const ANSI_RE = /\x1b\[[0-9;]*m/g;
 
 function buildSystem(lang: Lang): string {
   const langClause = lang === 'ja' ? '日本語で' : 'in English';
