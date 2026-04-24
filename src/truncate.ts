@@ -61,16 +61,20 @@ function truncateContexts(contexts: NexusResult[], budget: number): NexusResult[
   }
 
   const remaining = [...contexts];
-  while (total > budget) {
+  while (total > budget && remaining.length > 0) {
     let longestIdx = 0;
     for (let i = 1; i < remaining.length; i++) {
-      if (remaining[i].content.length > remaining[longestIdx].content.length) {
+      const current = remaining[i];
+      const longest = remaining[longestIdx];
+      if (current && longest && current.content.length > longest.content.length) {
         longestIdx = i;
       }
     }
 
     const removed = remaining.splice(longestIdx, 1)[0];
-    total -= removed.content.length;
+    if (removed) {
+      total -= removed.content.length;
+    }
   }
 
   return remaining;
