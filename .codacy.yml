@@ -1,0 +1,10 @@
+---
+exclude_paths:
+  - "dist/**"
+  - "node_modules/**"
+  - "coverage/**"
+  - "src/prompt.ts" # グローバルで除外
+
+metric:
+  exclude_paths:
+    - "tests/**"
