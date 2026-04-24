@@ -55,6 +55,18 @@ describe('parseFlags', () => {
     expect(parseFlags(['--model', 'llama3:8b']).model).toBe('llama3:8b');
   });
 
+  it('--model missing value should error', () => {
+    expect(() => parseFlags(['--model'])).toThrow(/requires a value/);
+  });
+
+  it('combines multiple flags correctly', () => {
+    const flags = parseFlags(['--lang', 'ja', '--model', 'gpt-4', '--dry-run', '--no-context']);
+    expect(flags.lang).toBe('ja');
+    expect(flags.model).toBe('gpt-4');
+    expect(flags.dryRun).toBe(true);
+    expect(flags.useContext).toBe(false);
+  });
+
   it('-h and --help set help flag', () => {
     expect(parseFlags(['-h']).help).toBe(true);
     expect(parseFlags(['--help']).help).toBe(true);
