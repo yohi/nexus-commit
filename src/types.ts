@@ -1,5 +1,7 @@
+export const ALLOWED_LANGS = ['ja', 'en'] as const;
+export type Lang = typeof ALLOWED_LANGS[number];
+
 export type DiffMode = 'staged' | 'unstaged' | 'all';
-export type Lang = 'ja' | 'en';
 
 export interface Config {
   nexusUrl: string;

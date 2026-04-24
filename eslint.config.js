@@ -20,4 +20,10 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
+  {
+    files: ['src/prompt.ts'],
+    rules: {
+      'no-control-regex': 'off',
+    },
+  },
 );

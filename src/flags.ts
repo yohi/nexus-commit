@@ -1,4 +1,8 @@
-import type { DiffMode, Lang } from './types.js';
+import { ALLOWED_LANGS, type Lang, type DiffMode } from './types.js';
+
+export function isLang(v: string): v is Lang {
+  return (ALLOWED_LANGS as readonly string[]).includes(v);
+}
 
 export interface Flags {
   diffMode: DiffMode;
@@ -12,7 +16,7 @@ export interface Flags {
 
 function requireNext(argv: string[], i: number, flag: string): string {
   const value = argv[i + 1];
-  if (value === undefined) {
+  if (typeof value !== 'string' || value.startsWith('-')) {
     throw new Error(`Flag ${flag} requires a value`);
   }
   return value;
@@ -55,8 +59,8 @@ export function parseFlags(argv: string[]): Flags {
         break;
       case '--lang': {
         const value = requireNext(argv, i, '--lang');
-        if (value !== 'ja' && value !== 'en') {
-          throw new Error(`Invalid lang: ${value} (allowed: ja, en)`);
+        if (!isLang(value)) {
+          throw new Error(`Invalid lang: ${value} (allowed: ${ALLOWED_LANGS.join(', ')})`);
         }
         flags.lang = value;
         i++;
