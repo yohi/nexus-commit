@@ -11,30 +11,32 @@ const mockExecFile = vi.mocked(execFile);
 
 type CB = (error: Error | null, stdout: string, stderr: string) => void;
 
+function isCallback(value: unknown): value is CB {
+  return typeof value === 'function';
+}
+
 function stubSuccess(stdout: string): void {
   mockExecFile.mockImplementation(((
     _cmd: string,
     _args: string[],
-    optionsOrCb: any,
+    optionsOrCb: object | CB,
     cb?: CB,
   ) => {
-    const callback = typeof optionsOrCb === 'function' ? optionsOrCb : cb;
+    const callback = isCallback(optionsOrCb) ? optionsOrCb : cb;
     callback?.(null, stdout, '');
-    return {} as never;
-  }) as never);
+  }) as unknown as typeof execFile);
 }
 
 function stubFailure(err: Error): void {
   mockExecFile.mockImplementation(((
     _cmd: string,
     _args: string[],
-    optionsOrCb: any,
+    optionsOrCb: object | CB,
     cb?: CB,
   ) => {
-    const callback = typeof optionsOrCb === 'function' ? optionsOrCb : cb;
+    const callback = isCallback(optionsOrCb) ? optionsOrCb : cb;
     callback?.(err, '', '');
-    return {} as never;
-  }) as never);
+  }) as unknown as typeof execFile);
 }
 
 beforeEach(() => {
@@ -42,7 +44,7 @@ beforeEach(() => {
 });
 
 describe('NodeGitClient', () => {
-  it('isRepo returns true when rev-parse succeeds', async () => {
+  it('isRepo returns true when rev-parse outputs true', async () => {
     stubSuccess('true\n');
     const client = new NodeGitClient();
     expect(await client.isRepo()).toBe(true);
@@ -52,6 +54,12 @@ describe('NodeGitClient', () => {
       { maxBuffer: 100 * 1024 * 1024 },
       expect.any(Function),
     );
+  });
+
+  it('isRepo returns false when rev-parse outputs false', async () => {
+    stubSuccess('false\n');
+    const client = new NodeGitClient();
+    expect(await client.isRepo()).toBe(false);
   });
 
   it('isRepo returns false when rev-parse fails', async () => {
@@ -66,32 +74,37 @@ describe('NodeGitClient', () => {
     mockExecFile.mockImplementation(((
       _cmd: string,
       _args: string[],
-      optionsOrCb: any,
+      optionsOrCb: object | CB,
       cb?: CB,
     ) => {
-      const callback = typeof optionsOrCb === 'function' ? optionsOrCb : cb;
+      const callback = isCallback(optionsOrCb) ? optionsOrCb : cb;
       const output = outputs[call++];
       callback?.(null, output ?? '', '');
-      return {} as never;
-    }) as never);
+    }) as unknown as typeof execFile);
 
     const client = new NodeGitClient();
     const result = await client.getDiff('staged');
     expect(result.diff).toBe('diff content staged');
     expect(result.files).toEqual(['src/foo.ts', 'src/bar.ts']);
+
+    // Assert underlying git calls include --staged
+    const calls = mockExecFile.mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0]?.[1]).toContain('--staged');
+    expect(calls[1]?.[1]).toContain('--staged');
+    expect(calls[1]?.[1]).toContain('--name-only');
   });
 
   it('getDiff unstaged invokes git diff without --staged', async () => {
     mockExecFile.mockImplementation(((
       _cmd: string,
       _args: string[],
-      optionsOrCb: any,
+      optionsOrCb: object | CB,
       cb?: CB,
     ) => {
-      const callback = typeof optionsOrCb === 'function' ? optionsOrCb : cb;
+      const callback = isCallback(optionsOrCb) ? optionsOrCb : cb;
       callback?.(null, 'diff', '');
-      return {} as never;
-    }) as never);
+    }) as unknown as typeof execFile);
 
     await new NodeGitClient().getDiff('unstaged');
 
@@ -114,14 +127,13 @@ describe('NodeGitClient', () => {
     mockExecFile.mockImplementation(((
       _cmd: string,
       _args: string[],
-      optionsOrCb: any,
+      optionsOrCb: object | CB,
       cb?: CB,
     ) => {
-      const callback = typeof optionsOrCb === 'function' ? optionsOrCb : cb;
+      const callback = isCallback(optionsOrCb) ? optionsOrCb : cb;
       const output = outputs[call++];
       callback?.(null, output ?? '', '');
-      return {} as never;
-    }) as never);
+    }) as unknown as typeof execFile);
 
     const result = await new NodeGitClient().getDiff('all');
 

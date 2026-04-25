@@ -31,7 +31,7 @@ async function filesStaged(): Promise<string[]> {
   return out
     .split(/\r?\n/)
     .map((s) => s.trim())
-    .filter(Boolean);
+    .filter((s) => s !== '');
 }
 
 async function filesUnstaged(): Promise<string[]> {
@@ -39,14 +39,14 @@ async function filesUnstaged(): Promise<string[]> {
   return out
     .split(/\r?\n/)
     .map((s) => s.trim())
-    .filter(Boolean);
+    .filter((s) => s !== '');
 }
 
 export class NodeGitClient implements GitClient {
   async isRepo(): Promise<boolean> {
     try {
-      await runGit(['rev-parse', '--is-inside-work-tree']);
-      return true;
+      const out = await runGit(['rev-parse', '--is-inside-work-tree']);
+      return out.trim() === 'true';
     } catch {
       return false;
     }
@@ -69,11 +69,12 @@ export class NodeGitClient implements GitClient {
         filesUnstaged(),
       ]);
       return {
-        diff: [s, u].filter(Boolean).join('\n'),
+        diff: [s, u].filter((str) => str !== '').join('\n'),
         files: [...new Set([...sf, ...uf])],
       };
     }
-    throw new Error(`Unsupported diff mode: ${mode}`);
+    const exhaustiveCheck: never = mode;
+    throw new Error(`Unsupported diff mode: ${exhaustiveCheck}`);
   }
 
   async commit(message: string): Promise<void> {
