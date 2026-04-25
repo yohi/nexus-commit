@@ -35,7 +35,6 @@ export function parseFlags(argv: string[]): Flags {
   let diffModeExplicitlySet = false;
 
   for (let i = 0; i < argv.length; i++) {
-    // eslint-disable-next-line
     const arg = argv[i];
     switch (arg) {
       case '--staged':
