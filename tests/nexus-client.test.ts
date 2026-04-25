@@ -64,7 +64,7 @@ describe('HttpNexusClient', () => {
     const client = new HttpNexusClient('http://localhost:8080');
     await expect(
       client.search({ query: 'q', files: [] }, { timeoutMs: 5000 }),
-    ).rejects.toThrow();
+    ).rejects.toThrow('Invalid Nexus response: missing or non-array "results"');
   });
 
   it('throws on invalid item shape', async () => {
@@ -74,19 +74,33 @@ describe('HttpNexusClient', () => {
     const client = new HttpNexusClient('http://localhost:8080');
     await expect(
       client.search({ query: 'q', files: [] }, { timeoutMs: 5000 }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(/Invalid Nexus result item at index 0/);
   });
 
   it('aborts on timeout', async () => {
-    vi.mocked(fetch).mockImplementation(((_url: string, opts: { signal: AbortSignal }) =>
-      new Promise((_resolve, reject) => {
-        opts.signal.addEventListener('abort', () =>
-          reject(new DOMException('aborted', 'AbortError')),
-        );
-      })) as never);
-    const client = new HttpNexusClient('http://localhost:8080');
-    await expect(
-      client.search({ query: 'q', files: [] }, { timeoutMs: 10 }),
-    ).rejects.toThrow();
+    vi.useFakeTimers();
+    try {
+      vi.mocked(fetch).mockImplementation(((_url: string, opts: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          opts.signal.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          );
+        })) as never);
+
+      const client = new HttpNexusClient('http://localhost:8080');
+      const searchPromise = client.search(
+        { query: 'q', files: [] },
+        { timeoutMs: 10 },
+      );
+      const expectation = expect(searchPromise).rejects.toThrow(
+        'Nexus search timed out',
+      );
+
+      await vi.advanceTimersByTimeAsync(10);
+
+      await expectation;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
