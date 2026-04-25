@@ -3,10 +3,18 @@ import type { DiffMode, DiffResult, GitClient } from './types.js';
 
 function runGit(args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile('git', args, (error, stdout) => {
-      if (error) reject(error);
-      else resolve(stdout);
-    });
+    execFile(
+      'git',
+      args,
+      { maxBuffer: 100 * 1024 * 1024 },
+      (error, stdout) => {
+        if (error) {
+          reject(error instanceof Error ? error : new Error(String(error)));
+        } else {
+          resolve(stdout);
+        }
+      },
+    );
   });
 }
 
@@ -20,12 +28,18 @@ async function diffUnstaged(): Promise<string> {
 
 async function filesStaged(): Promise<string[]> {
   const out = await runGit(['diff', '--name-only', '--staged']);
-  return out.split('\n').filter(Boolean);
+  return out
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 async function filesUnstaged(): Promise<string[]> {
   const out = await runGit(['diff', '--name-only']);
-  return out.split('\n').filter(Boolean);
+  return out
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 export class NodeGitClient implements GitClient {
@@ -47,16 +61,19 @@ export class NodeGitClient implements GitClient {
       const [diff, files] = await Promise.all([diffUnstaged(), filesUnstaged()]);
       return { diff, files };
     }
-    const [s, u, sf, uf] = await Promise.all([
-      diffStaged(),
-      diffUnstaged(),
-      filesStaged(),
-      filesUnstaged(),
-    ]);
-    return {
-      diff: s + u,
-      files: [...new Set([...sf, ...uf])],
-    };
+    if (mode === 'all') {
+      const [s, u, sf, uf] = await Promise.all([
+        diffStaged(),
+        diffUnstaged(),
+        filesStaged(),
+        filesUnstaged(),
+      ]);
+      return {
+        diff: [s, u].filter(Boolean).join('\n'),
+        files: [...new Set([...sf, ...uf])],
+      };
+    }
+    throw new Error(`Unsupported diff mode: ${mode}`);
   }
 
   async commit(message: string): Promise<void> {

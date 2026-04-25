@@ -12,15 +12,27 @@ const mockExecFile = vi.mocked(execFile);
 type CB = (error: Error | null, stdout: string, stderr: string) => void;
 
 function stubSuccess(stdout: string): void {
-  mockExecFile.mockImplementation(((_cmd: string, _args: string[], cb: CB) => {
-    cb(null, stdout, '');
+  mockExecFile.mockImplementation(((
+    _cmd: string,
+    _args: string[],
+    optionsOrCb: any,
+    cb?: CB,
+  ) => {
+    const callback = typeof optionsOrCb === 'function' ? optionsOrCb : cb;
+    callback?.(null, stdout, '');
     return {} as never;
   }) as never);
 }
 
 function stubFailure(err: Error): void {
-  mockExecFile.mockImplementation(((_cmd: string, _args: string[], cb: CB) => {
-    cb(err, '', '');
+  mockExecFile.mockImplementation(((
+    _cmd: string,
+    _args: string[],
+    optionsOrCb: any,
+    cb?: CB,
+  ) => {
+    const callback = typeof optionsOrCb === 'function' ? optionsOrCb : cb;
+    callback?.(err, '', '');
     return {} as never;
   }) as never);
 }
@@ -37,6 +49,7 @@ describe('NodeGitClient', () => {
     expect(mockExecFile).toHaveBeenCalledWith(
       'git',
       ['rev-parse', '--is-inside-work-tree'],
+      { maxBuffer: 100 * 1024 * 1024 },
       expect.any(Function),
     );
   });
@@ -48,13 +61,17 @@ describe('NodeGitClient', () => {
   });
 
   it('getDiff staged invokes git diff --staged', async () => {
-    const outputs = [
-      'diff content staged',
-      'src/foo.ts\nsrc/bar.ts\n',
-    ];
+    const outputs = ['diff content staged', 'src/foo.ts\nsrc/bar.ts\n'];
     let call = 0;
-    mockExecFile.mockImplementation(((_cmd: string, _args: string[], cb: CB) => {
-      cb(null, outputs[call++]!, '');
+    mockExecFile.mockImplementation(((
+      _cmd: string,
+      _args: string[],
+      optionsOrCb: any,
+      cb?: CB,
+    ) => {
+      const callback = typeof optionsOrCb === 'function' ? optionsOrCb : cb;
+      const output = outputs[call++];
+      callback?.(null, output ?? '', '');
       return {} as never;
     }) as never);
 
@@ -64,28 +81,55 @@ describe('NodeGitClient', () => {
     expect(result.files).toEqual(['src/foo.ts', 'src/bar.ts']);
   });
 
-  it('getDiff unstaged uses no --staged flag', async () => {
-    let seenArgs: string[] | undefined;
-    mockExecFile.mockImplementation(((_cmd: string, args: string[], cb: CB) => {
-      seenArgs = args;
-      cb(null, 'diff', '');
+  it('getDiff unstaged invokes git diff without --staged', async () => {
+    mockExecFile.mockImplementation(((
+      _cmd: string,
+      _args: string[],
+      optionsOrCb: any,
+      cb?: CB,
+    ) => {
+      const callback = typeof optionsOrCb === 'function' ? optionsOrCb : cb;
+      callback?.(null, 'diff', '');
       return {} as never;
     }) as never);
+
     await new NodeGitClient().getDiff('unstaged');
-    expect(seenArgs).not.toContain('--staged');
+
+    // Verify both calls: diff and files
+    const calls = mockExecFile.mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0]?.[1]).not.toContain('--staged');
+    expect(calls[1]?.[1]).not.toContain('--staged');
   });
 
-  it('getDiff all merges staged + unstaged', async () => {
-    const outputs = ['staged-diff', 'unstaged-diff', 'a.ts\n', 'b.ts\n'];
+  it('getDiff all merges staged + unstaged with strict normalization', async () => {
+    // staged-diff, unstaged-diff, staged-files, unstaged-files
+    const outputs = [
+      'staged-diff\n',
+      'unstaged-diff',
+      'common.ts\r\nstaged.ts\n',
+      'common.ts\nunstaged.ts\r\n',
+    ];
     let call = 0;
-    mockExecFile.mockImplementation(((_cmd: string, _args: string[], cb: CB) => {
-      cb(null, outputs[call++]!, '');
+    mockExecFile.mockImplementation(((
+      _cmd: string,
+      _args: string[],
+      optionsOrCb: any,
+      cb?: CB,
+    ) => {
+      const callback = typeof optionsOrCb === 'function' ? optionsOrCb : cb;
+      const output = outputs[call++];
+      callback?.(null, output ?? '', '');
       return {} as never;
     }) as never);
+
     const result = await new NodeGitClient().getDiff('all');
-    expect(result.diff).toContain('staged-diff');
-    expect(result.diff).toContain('unstaged-diff');
-    expect(result.files).toEqual(expect.arrayContaining(['a.ts', 'b.ts']));
+
+    // Verify strict combined diff
+    expect(result.diff).toBe('staged-diff\n\nunstaged-diff');
+
+    // Verify strict deduplicated and normalized files
+    expect(result.files).toEqual(['common.ts', 'staged.ts', 'unstaged.ts']);
   });
 
   it('commit invokes git commit -m', async () => {
@@ -94,12 +138,15 @@ describe('NodeGitClient', () => {
     expect(mockExecFile).toHaveBeenCalledWith(
       'git',
       ['commit', '-m', 'feat: add X'],
+      { maxBuffer: 100 * 1024 * 1024 },
       expect.any(Function),
     );
   });
 
   it('commit surfaces underlying error', async () => {
     stubFailure(new Error('pre-commit hook failed'));
-    await expect(new NodeGitClient().commit('m')).rejects.toThrow('pre-commit hook failed');
+    await expect(new NodeGitClient().commit('m')).rejects.toThrow(
+      'pre-commit hook failed',
+    );
   });
 });
