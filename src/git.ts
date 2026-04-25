@@ -53,28 +53,32 @@ export class NodeGitClient implements GitClient {
   }
 
   async getDiff(mode: DiffMode): Promise<DiffResult> {
-    if (mode === 'staged') {
-      const [diff, files] = await Promise.all([diffStaged(), filesStaged()]);
-      return { diff, files };
+    switch (mode) {
+      case 'staged': {
+        const [diff, files] = await Promise.all([diffStaged(), filesStaged()]);
+        return { diff, files };
+      }
+      case 'unstaged': {
+        const [diff, files] = await Promise.all([diffUnstaged(), filesUnstaged()]);
+        return { diff, files };
+      }
+      case 'all': {
+        const [s, u, sf, uf] = await Promise.all([
+          diffStaged(),
+          diffUnstaged(),
+          filesStaged(),
+          filesUnstaged(),
+        ]);
+        return {
+          diff: [s, u].filter((str) => str !== '').join('\n'),
+          files: [...new Set([...sf, ...uf])],
+        };
+      }
+      default: {
+        const exhaustiveCheck: never = mode;
+        throw new Error(`Unsupported diff mode: ${exhaustiveCheck as string}`);
+      }
     }
-    if (mode === 'unstaged') {
-      const [diff, files] = await Promise.all([diffUnstaged(), filesUnstaged()]);
-      return { diff, files };
-    }
-    if (mode === 'all') {
-      const [s, u, sf, uf] = await Promise.all([
-        diffStaged(),
-        diffUnstaged(),
-        filesStaged(),
-        filesUnstaged(),
-      ]);
-      return {
-        diff: [s, u].filter((str) => str !== '').join('\n'),
-        files: [...new Set([...sf, ...uf])],
-      };
-    }
-    const exhaustiveCheck: never = mode;
-    throw new Error(`Unsupported diff mode: ${exhaustiveCheck}`);
   }
 
   async commit(message: string): Promise<void> {
