@@ -127,8 +127,14 @@ async function interactive(
     const action = await clack.select({
       message: 'どうしますか？',
       options: [
-        { value: 'commit', label: '採用してコミット' },
-        { value: 'edit', label: '編集してからコミット' },
+        {
+          value: 'commit',
+          label: config.dryRun ? '採用して出力' : '採用してコミット',
+        },
+        {
+          value: 'edit',
+          label: config.dryRun ? '編集してから出力' : '編集してからコミット',
+        },
         { value: 'regen', label: '再生成（追加指示）' },
         { value: 'abort', label: '中止' },
       ],

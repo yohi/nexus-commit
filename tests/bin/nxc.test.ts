@@ -91,6 +91,7 @@ describe('nxc main', () => {
     const code = await main(['--dry-run'], overrides);
     expect(code).toBe(0);
     expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('feat: test commit'));
+    expect(mockGit.commit).not.toHaveBeenCalled();
   });
 
   it('returns 3 when LLM generation fails', async () => {
