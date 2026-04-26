@@ -67,7 +67,7 @@ describe('OpenAICompatibleLlmClient', () => {
     );
     const call = vi.mocked(fetch).mock.calls[0];
     expect(call).toBeDefined();
-    const opts = call![1] as RequestInit;
+    const opts = (call as [string, RequestInit])[1];
     const body = JSON.parse(opts.body as string);
     expect(body.temperature).toBe(0.2);
   });
@@ -81,14 +81,16 @@ describe('OpenAICompatibleLlmClient', () => {
     await client1.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 60000 });
     const call1 = vi.mocked(fetch).mock.calls[0];
     expect(call1).toBeDefined();
-    expect(call1![0]).toBe('http://localhost:11434/v1/chat/completions');
+    const url1 = (call1 as [string, RequestInit])[0];
+    expect(url1).toBe('http://localhost:11434/v1/chat/completions');
 
     // test without trailing slash
     const client2 = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await client2.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 60000 });
     const call2 = vi.mocked(fetch).mock.calls[1];
     expect(call2).toBeDefined();
-    expect(call2![0]).toBe('http://localhost:11434/v1/chat/completions');
+    const url2 = (call2 as [string, RequestInit])[0];
+    expect(url2).toBe('http://localhost:11434/v1/chat/completions');
   });
 
   it('throws on invalid timeoutMs', async () => {

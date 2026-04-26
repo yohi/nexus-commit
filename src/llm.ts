@@ -13,15 +13,16 @@ function extractContent(data: unknown): string {
   ) {
     throw new Error('Invalid LLM response: choices missing');
   }
-  const choices = (data as { choices: ChoiceShape[] }).choices;
+  const choices = (data as { choices: (ChoiceShape | null | undefined)[] }).choices;
   if (choices.length === 0) {
     throw new Error('LLM returned empty choices');
   }
   const first = choices[0];
-  if (!first || typeof (first as ChoiceShape).message?.content !== 'string') {
+  const content = first?.message?.content;
+  if (typeof content !== 'string') {
     throw new Error('LLM returned invalid message content');
   }
-  return (first as ChoiceShape).message!.content as string;
+  return content;
 }
 
 export class OpenAICompatibleLlmClient implements LlmClientPort {
