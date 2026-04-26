@@ -109,6 +109,19 @@ describe('OpenAICompatibleLlmClient', () => {
     ).rejects.toThrow(/Invalid timeoutMs/);
   });
 
+  it('throws on invalid temperature', async () => {
+    const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
+    await expect(
+      client.chat({ system: 's', user: 'u', model: 'm', temperature: -0.1 }, { timeoutMs: 1000 }),
+    ).rejects.toThrow(/Invalid temperature/);
+    await expect(
+      client.chat({ system: 's', user: 'u', model: 'm', temperature: 2.1 }, { timeoutMs: 1000 }),
+    ).rejects.toThrow(/Invalid temperature/);
+    await expect(
+      client.chat({ system: 's', user: 'u', model: 'm', temperature: NaN }, { timeoutMs: 1000 }),
+    ).rejects.toThrow(/Invalid temperature/);
+  });
+
   it('throws when choices field is missing', async () => {
     vi.mocked(fetch).mockResolvedValue(mockRes({}));
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
@@ -138,7 +151,7 @@ describe('OpenAICompatibleLlmClient', () => {
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(/invalid message content/);
   });
 
   it('throws on 401 with error body', async () => {
