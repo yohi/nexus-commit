@@ -37,7 +37,7 @@ describe('HttpNexusClient', () => {
 
     const calls = vi.mocked(fetch).mock.calls;
     expect(calls).toHaveLength(1);
-    const [url, opts] = calls[0];
+    const [url, opts] = calls[0] as [string, RequestInit];
 
     expect(url).toBe('http://localhost:8080/api/search');
     expect(opts?.method).toBe('POST');
@@ -54,7 +54,7 @@ describe('HttpNexusClient', () => {
 
     const calls = vi.mocked(fetch).mock.calls;
     expect(calls).toHaveLength(1);
-    const [url] = calls[0];
+    const [url] = calls[0] as [string, RequestInit];
     expect(url).toBe('http://localhost:8080/api/search');
   });
 
