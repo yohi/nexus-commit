@@ -56,6 +56,22 @@ describe('OpenAICompatibleLlmClient', () => {
     ]);
   });
 
+  it('uses default temperature of 0.2 if not provided', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      mockRes({ choices: [{ message: { content: 'x' } }] }),
+    );
+    const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
+    await client.chat(
+      { system: 's', user: 'u', model: 'm' },
+      { timeoutMs: 1000 },
+    );
+    const call = vi.mocked(fetch).mock.calls[0];
+    expect(call).toBeDefined();
+    const opts = call![1] as RequestInit;
+    const body = JSON.parse(opts.body as string);
+    expect(body.temperature).toBe(0.2);
+  });
+
   it('removes trailing slash from baseUrl or handles it correctly', async () => {
     vi.mocked(fetch).mockResolvedValue(
       mockRes({ choices: [{ message: { content: 'x' } }] }),
@@ -83,6 +99,12 @@ describe('OpenAICompatibleLlmClient', () => {
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: -1 }),
     ).rejects.toThrow(/Invalid timeoutMs/);
+    await expect(
+      client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: NaN }),
+    ).rejects.toThrow(/Invalid timeoutMs/);
+    await expect(
+      client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: Infinity }),
+    ).rejects.toThrow(/Invalid timeoutMs/);
   });
 
   it('throws when choices field is missing', async () => {
@@ -91,6 +113,14 @@ describe('OpenAICompatibleLlmClient', () => {
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
     ).rejects.toThrow(/choices missing/);
+  });
+
+  it('throws when first choice is null or undefined', async () => {
+    vi.mocked(fetch).mockResolvedValue(mockRes({ choices: [null] }));
+    const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
+    await expect(
+      client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
+    ).rejects.toThrow(/invalid message content/);
   });
 
   it('throws on empty choices', async () => {

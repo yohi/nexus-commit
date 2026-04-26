@@ -17,11 +17,11 @@ function extractContent(data: unknown): string {
   if (choices.length === 0) {
     throw new Error('LLM returned empty choices');
   }
-  const first = choices[0] as ChoiceShape;
-  if (typeof first.message?.content !== 'string') {
+  const first = choices[0];
+  if (!first || typeof (first as ChoiceShape).message?.content !== 'string') {
     throw new Error('LLM returned invalid message content');
   }
-  return first.message.content;
+  return (first as ChoiceShape).message!.content as string;
 }
 
 export class OpenAICompatibleLlmClient implements LlmClientPort {
@@ -31,8 +31,8 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
   ) {}
 
   async chat(req: ChatRequest, opts: { timeoutMs: number }): Promise<string> {
-    if (typeof opts.timeoutMs !== 'number' || opts.timeoutMs <= 0) {
-      throw new Error(`Invalid timeoutMs: ${opts.timeoutMs}. Must be a positive number.`);
+    if (typeof opts.timeoutMs !== 'number' || !Number.isFinite(opts.timeoutMs) || opts.timeoutMs <= 0) {
+      throw new Error(`Invalid timeoutMs: ${opts.timeoutMs}. Must be a positive finite number.`);
     }
 
     const controller = new AbortController();
