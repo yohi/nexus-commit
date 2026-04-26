@@ -6,6 +6,7 @@ describe('main', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
   });
 
   it('should show help text when --help is specified', async () => {
@@ -27,8 +28,8 @@ describe('main', () => {
 
   it('should return exit code 0 on valid flags (skeleton mode)', async () => {
     // env vars for loadConfig
-    process.env.NEXUS_URL = 'http://localhost:3000';
-    process.env.LLM_URL = 'http://localhost:11434';
+    vi.stubEnv('NEXUS_API_URL', 'http://localhost:3000');
+    vi.stubEnv('NEXUS_COMMIT_LLM_URL', 'http://localhost:11434');
     
     const code = await main(['--staged']);
     expect(code).toBe(0);
