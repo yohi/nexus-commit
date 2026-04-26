@@ -249,8 +249,11 @@ export async function main(
 
     return await interactive(config, deps, diff, files);
   } catch (err) {
-    const code = (err as { exitCode?: number }).exitCode ?? 1;
-    return code;
+    if ((err as { exitCode?: number }).exitCode !== undefined) {
+      return (err as { exitCode?: number }).exitCode!;
+    }
+    logger.error(errorToString(err));
+    return 1;
   }
 }
 
