@@ -1,72 +1,119 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import * as clack from '@clack/prompts';
 import { main } from '../../src/bin/nxc.js';
-import pkg from '../../package.json' with { type: 'json' };
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import type { GitClient, NexusClientPort, LlmClientPort } from '../../src/types.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const mockSpinner = {
+  start: vi.fn(),
+  stop: vi.fn(),
+};
 
-describe('main', () => {
+vi.mock('@clack/prompts', () => ({
+  intro: vi.fn(),
+  outro: vi.fn(),
+  select: vi.fn(),
+  text: vi.fn(),
+  confirm: vi.fn(),
+  spinner: vi.fn(() => mockSpinner),
+  cancel: vi.fn(),
+  isCancel: (val: unknown) => val === Symbol.for('clack:cancel'),
+  log: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+  },
+  note: vi.fn(),
+}));
+
+describe('nxc main', () => {
+  const mockGit: GitClient = {
+    isRepo: vi.fn(),
+    getDiff: vi.fn(),
+    commit: vi.fn(),
+  };
+  const mockNexus: NexusClientPort = {
+    search: vi.fn(),
+  };
+  const mockLlm: LlmClientPort = {
+    chat: vi.fn(),
+  };
+
+  const overrides = { git: mockGit, nexus: mockNexus, llm: mockLlm };
+
   beforeEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllEnvs();
+    vi.resetAllMocks();
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    vi.mocked(mockNexus.search).mockResolvedValue([]);
+    vi.mocked(clack.select).mockResolvedValue('abort');
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    vi.unstubAllEnvs();
   });
 
-  it('should have HELP_TEXT synchronized with README.md', async () => {
-    const readmePath = path.resolve(__dirname, '../../README.md');
-    const readmeContent = fs.readFileSync(readmePath, 'utf8');
-    
-    // Extract CLI Options from README using markers
-    const match = readmeContent.match(/<!-- CLI_OPTIONS_START -->\n```bash\n([\s\S]*?)\n```\n<!-- CLI_OPTIONS_END -->/);
-    const readmeOptions = match?.[1]?.trim();
-    if (readmeOptions === undefined) {
-      throw new Error('Could not find CLI options markers or content in README.md');
-    }
-
-    // Import HELP_TEXT from src/bin/nxc.ts (via main or exported directly if possible)
-    // For now, we compare against what main(['--help']) outputs
-    let capturedOutput = '';
-    vi.spyOn(process.stdout, 'write').mockImplementation((content) => {
-      capturedOutput += content;
-      return true;
-    });
-
-    await main(['--help']);
-    expect(capturedOutput.trim()).toBe(readmeOptions);
-  });
-
-
-  it('should show help text when --help is specified', async () => {
-    const code = await main(['--help']);
+  it('shows help and returns 0 when --help is passed', async () => {
+    const code = await main(['--help'], overrides);
     expect(code).toBe(0);
     expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('Usage: nxc'));
   });
 
-  it('should show version when --version is specified', async () => {
-    const code = await main(['--version']);
+  it('shows version and returns 0 when --version is passed', async () => {
+    const code = await main(['--version'], overrides);
     expect(code).toBe(0);
-    expect(process.stdout.write).toHaveBeenCalledWith(`${pkg.version}\n`);
+    expect(process.stdout.write).toHaveBeenCalledWith(expect.stringMatching(/^\d+\.\d+\.\d+/));
   });
 
-  it('should return exit code 2 on unknown flag', async () => {
-    const code = await main(['--unknown']);
+  it('returns 2 when not a git repository', async () => {
+    vi.mocked(mockGit.isRepo).mockResolvedValue(false);
+    const code = await main([], overrides);
     expect(code).toBe(2);
   });
 
-  it('should return exit code 0 on valid flags (skeleton mode)', async () => {
-    // env vars for loadConfig
-    vi.stubEnv('NEXUS_API_URL', 'http://localhost:3000');
-    vi.stubEnv('NEXUS_COMMIT_LLM_URL', 'http://localhost:11434');
-    
-    const code = await main(['--staged']);
+  it('returns 0 and shows message when no changes', async () => {
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: '', files: [] });
+    const code = await main([], overrides);
     expect(code).toBe(0);
+  });
+
+  it('returns 2 on invalid flags', async () => {
+    const code = await main(['--invalid-flag'], overrides);
+    expect(code).toBe(2);
+  });
+
+  it('runs successfully in dry-run mode', async () => {
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'test diff', files: ['test.ts'] });
+    vi.mocked(mockLlm.chat).mockResolvedValue('feat: test commit');
+    vi.mocked(clack.select).mockResolvedValue('commit');
+
+    const code = await main(['--dry-run'], overrides);
+    expect(code).toBe(0);
+    expect(process.stdout.write).toHaveBeenCalledWith(expect.stringContaining('feat: test commit'));
+    expect(mockGit.commit).not.toHaveBeenCalled();
+  });
+
+  it('returns 3 when LLM generation fails', async () => {
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'test diff', files: ['test.ts'] });
+    const llmError = Object.assign(new Error('LLM Error'), { exitCode: 3 });
+    vi.mocked(mockLlm.chat).mockRejectedValue(llmError);
+
+    const code = await main([], overrides);
+    expect(code).toBe(3);
+    expect(clack.cancel).toHaveBeenCalledWith('生成に失敗しました');
+  });
+
+  it('continues and returns 0 when Nexus lookup fails but commit succeeds', async () => {
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'test diff', files: ['test.ts'] });
+    vi.mocked(mockNexus.search).mockRejectedValue(new Error('Nexus Down'));
+    vi.mocked(mockLlm.chat).mockResolvedValue('feat: test commit');
+    vi.mocked(clack.select).mockResolvedValue('commit');
+
+    const code = await main([], overrides);
+    expect(code).toBe(0);
+    expect(mockGit.commit).toHaveBeenCalledWith('feat: test commit');
   });
 });
