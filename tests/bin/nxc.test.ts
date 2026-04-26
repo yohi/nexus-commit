@@ -1,13 +1,46 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { main } from '../../src/bin/nxc.js';
 import pkg from '../../package.json' with { type: 'json' };
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe('main', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
   });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it('should have HELP_TEXT synchronized with README.md', async () => {
+    const readmePath = path.resolve(__dirname, '../../README.md');
+    const readmeContent = fs.readFileSync(readmePath, 'utf8');
+    
+    // Extract CLI Options from README using markers
+    const match = readmeContent.match(/<!-- CLI_OPTIONS_START -->\n```bash\n([\s\S]*?)\n```\n<!-- CLI_OPTIONS_END -->/);
+    expect(match).not.toBeNull();
+    const readmeOptions = match![1].trim();
+
+    // Import HELP_TEXT from src/bin/nxc.ts (via main or exported directly if possible)
+    // For now, we compare against what main(['--help']) outputs
+    let capturedOutput = '';
+    vi.spyOn(process.stdout, 'write').mockImplementation((content) => {
+      capturedOutput += content;
+      return true;
+    });
+
+    await main(['--help']);
+    expect(capturedOutput.trim()).toBe(readmeOptions);
+  });
+
 
   it('should show help text when --help is specified', async () => {
     const code = await main(['--help']);
