@@ -96,8 +96,7 @@ describe('nxc main', () => {
   it('returns 3 when LLM generation fails', async () => {
     vi.mocked(mockGit.isRepo).mockResolvedValue(true);
     vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'test diff', files: ['test.ts'] });
-    const llmError = new Error('LLM Error');
-    (llmError as any).exitCode = 3;
+    const llmError = Object.assign(new Error('LLM Error'), { exitCode: 3 });
     vi.mocked(mockLlm.chat).mockRejectedValue(llmError);
 
     const code = await main([], overrides);
