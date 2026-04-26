@@ -3,18 +3,13 @@ import type { DiffMode, DiffResult, GitClient } from './types.js';
 
 function runGit(args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(
-      'git',
-      args,
-      { maxBuffer: 100 * 1024 * 1024 },
-      (error, stdout) => {
-        if (error) {
-          reject(error instanceof Error ? error : new Error(String(error)));
-        } else {
-          resolve(stdout);
-        }
-      },
-    );
+    execFile('git', args, { maxBuffer: 100 * 1024 * 1024 }, (error, stdout) => {
+      if (error) {
+        reject(error instanceof Error ? error : new Error(String(error)));
+      } else {
+        resolve(stdout);
+      }
+    });
   });
 }
 

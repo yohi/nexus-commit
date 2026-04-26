@@ -1,8 +1,4 @@
-import type {
-  NexusClientPort,
-  NexusResult,
-  NexusSearchRequest,
-} from './types.js';
+import type { NexusClientPort, NexusResult, NexusSearchRequest } from './types.js';
 
 interface RawItem {
   file?: unknown;
@@ -25,9 +21,7 @@ function parseResults(data: unknown): NexusResult[] {
     }
     const item = raw as RawItem;
     if (typeof item.file !== 'string' || typeof item.content !== 'string') {
-      throw new Error(
-        `Invalid Nexus result item at index ${idx}: missing required strings`,
-      );
+      throw new Error(`Invalid Nexus result item at index ${idx}: missing required strings`);
     }
     return { file: item.file, content: item.content };
   });
@@ -39,14 +33,8 @@ export class HttpNexusClient implements NexusClientPort {
     this.normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
   }
 
-  async search(
-    req: NexusSearchRequest,
-    opts: { timeoutMs: number },
-  ): Promise<NexusResult[]> {
-    const timeout =
-      Number.isFinite(opts.timeoutMs) && opts.timeoutMs > 0
-        ? opts.timeoutMs
-        : 5000;
+  async search(req: NexusSearchRequest, opts: { timeoutMs: number }): Promise<NexusResult[]> {
+    const timeout = Number.isFinite(opts.timeoutMs) && opts.timeoutMs > 0 ? opts.timeoutMs : 5000;
 
     const controller = new AbortController();
     const timer = setTimeout(() => {

@@ -16,7 +16,7 @@ describe('OpenAICompatibleLlmClient', () => {
       status,
       statusText,
       json: async () => body,
-      text: async () => typeof body === 'string' ? body : JSON.stringify(body),
+      text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
     } as Response;
   }
 
@@ -25,17 +25,12 @@ describe('OpenAICompatibleLlmClient', () => {
       mockRes({ choices: [{ message: { content: 'feat: add X' } }] }),
     );
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'ollama');
-    const out = await client.chat(
-      { system: 's', user: 'u', model: 'qwen' },
-      { timeoutMs: 60000 },
-    );
+    const out = await client.chat({ system: 's', user: 'u', model: 'qwen' }, { timeoutMs: 60000 });
     expect(out).toBe('feat: add X');
   });
 
   it('POST /chat/completions with OpenAI-compatible body', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      mockRes({ choices: [{ message: { content: 'x' } }] }),
-    );
+    vi.mocked(fetch).mockResolvedValue(mockRes({ choices: [{ message: { content: 'x' } }] }));
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await client.chat(
       { system: 'sys', user: 'usr', model: 'qwen', temperature: 0.5 },
@@ -57,14 +52,9 @@ describe('OpenAICompatibleLlmClient', () => {
   });
 
   it('uses default temperature of 0.2 if not provided', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      mockRes({ choices: [{ message: { content: 'x' } }] }),
-    );
+    vi.mocked(fetch).mockResolvedValue(mockRes({ choices: [{ message: { content: 'x' } }] }));
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
-    await client.chat(
-      { system: 's', user: 'u', model: 'm' },
-      { timeoutMs: 1000 },
-    );
+    await client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 });
     const call = vi.mocked(fetch).mock.calls[0];
     expect(call).toBeDefined();
     const opts = (call as [string, RequestInit])[1];
@@ -73,9 +63,7 @@ describe('OpenAICompatibleLlmClient', () => {
   });
 
   it('removes trailing slash from baseUrl or handles it correctly', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      mockRes({ choices: [{ message: { content: 'x' } }] }),
-    );
+    vi.mocked(fetch).mockResolvedValue(mockRes({ choices: [{ message: { content: 'x' } }] }));
     // test with trailing slash
     const client1 = new OpenAICompatibleLlmClient('http://localhost:11434/v1/', 'k');
     await client1.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 60000 });
@@ -155,7 +143,9 @@ describe('OpenAICompatibleLlmClient', () => {
   });
 
   it('throws on 401 with error body', async () => {
-    vi.mocked(fetch).mockResolvedValue(mockRes({ error: 'Unauthorized' }, false, 401, 'Unauthorized'));
+    vi.mocked(fetch).mockResolvedValue(
+      mockRes({ error: 'Unauthorized' }, false, 401, 'Unauthorized'),
+    );
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
@@ -163,14 +153,16 @@ describe('OpenAICompatibleLlmClient', () => {
   });
 
   it('throws specific error on timeout', async () => {
-    vi.mocked(fetch).mockImplementation(((_url: string, opts: { signal: AbortSignal }) =>
-      new Promise((_resolve, reject) => {
-        opts.signal.addEventListener('abort', () => {
-          const err = new Error('The operation was aborted');
-          err.name = 'AbortError';
-          reject(err);
-        });
-      })) as never);
+    vi.mocked(fetch).mockImplementation(
+      ((_url: string, opts: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          opts.signal.addEventListener('abort', () => {
+            const err = new Error('The operation was aborted');
+            err.name = 'AbortError';
+            reject(err);
+          });
+        })) as never,
+    );
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 10 }),

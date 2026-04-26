@@ -157,8 +157,6 @@ describe('NodeGitClient', () => {
 
   it('commit surfaces underlying error', async () => {
     stubFailure(new Error('pre-commit hook failed'));
-    await expect(new NodeGitClient().commit('m')).rejects.toThrow(
-      'pre-commit hook failed',
-    );
+    await expect(new NodeGitClient().commit('m')).rejects.toThrow('pre-commit hook failed');
   });
 });

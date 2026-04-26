@@ -42,7 +42,7 @@ It analyzes `git diff` using a local Nexus search server and an OpenAI-compatibl
 ### Verification
 - [REQUIRED] Run `npm run lint` for ESLint checks.
 - [REQUIRED] Run `npm run typecheck` for static type analysis.
-- [REQUIRED] Run `npm run format` to apply Prettier formatting.
+- [REQUIRED] Run `npm run format:check` to validate Prettier formatting.
 
 ## 🧠 Guidelines for Agents (REQUIRED)
 ### Dependency Management
@@ -61,10 +61,10 @@ It analyzes `git diff` using a local Nexus search server and an OpenAI-compatibl
 - **[CRITICAL]** Ensure all tests pass before proposing changes.
 
 ### Quality Enforcement
-- **[REQUIRED]** Do not format code manually.
-- **[REQUIRED]** Run `npm run format` after any modification.
-- **[REQUIRED]** Run `npm run lint` to check compliance.
-- **[REQUIRED]** Run `npm run typecheck` to verify types.
+- [REQUIRED] Do not format code manually.
+- [REQUIRED] Run `npm run format:check` to verify formatting; use `npm run format` to apply fixes if needed.
+- [REQUIRED] Run `npm run lint` to check compliance.
+- [REQUIRED] Run `npm run typecheck` to verify types.
 - **[REQUIRED]** Ask the user for guidance if a rule conflicts with implementation.
 
 ### Architectural Decisions
