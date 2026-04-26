@@ -249,8 +249,9 @@ export async function main(
 
     return await interactive(config, deps, diff, files);
   } catch (err) {
-    if ((err as { exitCode?: number }).exitCode !== undefined) {
-      return (err as { exitCode?: number }).exitCode!;
+    const exitCode = (err as { exitCode?: number }).exitCode;
+    if (exitCode !== undefined) {
+      return exitCode;
     }
     logger.error(errorToString(err));
     return 1;
