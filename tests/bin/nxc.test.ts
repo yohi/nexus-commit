@@ -32,7 +32,7 @@ describe('nxc main', () => {
     commit: vi.fn(),
   };
   const mockNexus: NexusClientPort = {
-    search: vi.fn().mockResolvedValue([]),
+    search: vi.fn(),
   };
   const mockLlm: LlmClientPort = {
     chat: vi.fn(),
