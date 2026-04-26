@@ -23,10 +23,7 @@ describe('HttpNexusClient', () => {
       mockResponse({ results: [{ file: 'a.ts', content: 'ctx' }] }),
     );
     const client = new HttpNexusClient('http://localhost:8080');
-    const result = await client.search(
-      { query: 'q', files: ['a.ts'] },
-      { timeoutMs: 5000 },
-    );
+    const result = await client.search({ query: 'q', files: ['a.ts'] }, { timeoutMs: 5000 });
     expect(result).toEqual([{ file: 'a.ts', content: 'ctx' }]);
   });
 
@@ -41,9 +38,7 @@ describe('HttpNexusClient', () => {
 
     expect(url).toBe('http://localhost:8080/api/search');
     expect(opts?.method).toBe('POST');
-    expect((opts?.headers as Record<string, string>)['Content-Type']).toBe(
-      'application/json',
-    );
+    expect((opts?.headers as Record<string, string>)['Content-Type']).toBe('application/json');
     expect(JSON.parse(opts?.body as string)).toEqual({ query: 'q', files: [] });
   });
 
@@ -61,55 +56,50 @@ describe('HttpNexusClient', () => {
   it('throws on 5xx status', async () => {
     vi.mocked(fetch).mockResolvedValue(mockResponse({}, false, 500));
     const client = new HttpNexusClient('http://localhost:8080');
-    await expect(
-      client.search({ query: 'q', files: [] }, { timeoutMs: 5000 }),
-    ).rejects.toThrow(/Nexus API error: 500/);
+    await expect(client.search({ query: 'q', files: [] }, { timeoutMs: 5000 })).rejects.toThrow(
+      /Nexus API error: 500/,
+    );
   });
 
   it('throws on 4xx status', async () => {
     vi.mocked(fetch).mockResolvedValue(mockResponse({}, false, 404));
     const client = new HttpNexusClient('http://localhost:8080');
-    await expect(
-      client.search({ query: 'q', files: [] }, { timeoutMs: 5000 }),
-    ).rejects.toThrow(/Nexus API error: 404/);
+    await expect(client.search({ query: 'q', files: [] }, { timeoutMs: 5000 })).rejects.toThrow(
+      /Nexus API error: 404/,
+    );
   });
 
   it('throws on invalid results schema', async () => {
     vi.mocked(fetch).mockResolvedValue(mockResponse({ other: true }));
     const client = new HttpNexusClient('http://localhost:8080');
-    await expect(
-      client.search({ query: 'q', files: [] }, { timeoutMs: 5000 }),
-    ).rejects.toThrow('Invalid Nexus response: missing or non-array "results"');
+    await expect(client.search({ query: 'q', files: [] }, { timeoutMs: 5000 })).rejects.toThrow(
+      'Invalid Nexus response: missing or non-array "results"',
+    );
   });
 
   it('throws on invalid item shape', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      mockResponse({ results: [{ file: 123, content: 'x' }] }),
-    );
+    vi.mocked(fetch).mockResolvedValue(mockResponse({ results: [{ file: 123, content: 'x' }] }));
     const client = new HttpNexusClient('http://localhost:8080');
-    await expect(
-      client.search({ query: 'q', files: [] }, { timeoutMs: 5000 }),
-    ).rejects.toThrow(/Invalid Nexus result item at index 0/);
+    await expect(client.search({ query: 'q', files: [] }, { timeoutMs: 5000 })).rejects.toThrow(
+      /Invalid Nexus result item at index 0/,
+    );
   });
 
   it('aborts on timeout', async () => {
     vi.useFakeTimers();
     try {
-      vi.mocked(fetch).mockImplementation(((_url: string, opts: { signal: AbortSignal }) =>
-        new Promise((_resolve, reject) => {
-          opts.signal.addEventListener('abort', () =>
-            reject(new DOMException('aborted', 'AbortError')),
-          );
-        })) as never);
+      vi.mocked(fetch).mockImplementation(
+        ((_url: string, opts: { signal: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            opts.signal.addEventListener('abort', () =>
+              reject(new DOMException('aborted', 'AbortError')),
+            );
+          })) as never,
+      );
 
       const client = new HttpNexusClient('http://localhost:8080');
-      const searchPromise = client.search(
-        { query: 'q', files: [] },
-        { timeoutMs: 10 },
-      );
-      const expectation = expect(searchPromise).rejects.toThrow(
-        'Nexus search timed out',
-      );
+      const searchPromise = client.search({ query: 'q', files: [] }, { timeoutMs: 10 });
+      const expectation = expect(searchPromise).rejects.toThrow('Nexus search timed out');
 
       await vi.advanceTimersByTimeAsync(10);
 

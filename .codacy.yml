@@ -5,6 +5,7 @@ exclude_paths:
   - "coverage/**"
   - "src/prompt.ts"
   - "tests/truncate.test.ts"
+  - "AGENTS.md"
 
 metric:
   exclude_paths:

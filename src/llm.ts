@@ -32,12 +32,23 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
   ) {}
 
   async chat(req: ChatRequest, opts: { timeoutMs: number }): Promise<string> {
-    if (typeof opts.timeoutMs !== 'number' || !Number.isFinite(opts.timeoutMs) || opts.timeoutMs <= 0) {
+    if (
+      typeof opts.timeoutMs !== 'number' ||
+      !Number.isFinite(opts.timeoutMs) ||
+      opts.timeoutMs <= 0
+    ) {
       throw new Error(`Invalid timeoutMs: ${opts.timeoutMs}. Must be a positive finite number.`);
     }
     if (req.temperature !== undefined) {
-      if (typeof req.temperature !== 'number' || !Number.isFinite(req.temperature) || req.temperature < 0 || req.temperature > 2) {
-        throw new Error(`Invalid temperature: ${req.temperature}. Must be a finite number between 0 and 2.`);
+      if (
+        typeof req.temperature !== 'number' ||
+        !Number.isFinite(req.temperature) ||
+        req.temperature < 0 ||
+        req.temperature > 2
+      ) {
+        throw new Error(
+          `Invalid temperature: ${req.temperature}. Must be a finite number between 0 and 2.`,
+        );
       }
     }
 
@@ -48,7 +59,10 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
     }, opts.timeoutMs);
     let res: Response;
     try {
-      const url = new URL('chat/completions', this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`).toString();
+      const url = new URL(
+        'chat/completions',
+        this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`,
+      ).toString();
       res = await fetch(url, {
         method: 'POST',
         headers: {

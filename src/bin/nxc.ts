@@ -10,13 +10,7 @@ import { OpenAICompatibleLlmClient } from '../llm.js';
 import { extract as extractKeywords } from '../keywords.js';
 import { build as buildTruncated } from '../truncate.js';
 import { build as buildPrompt } from '../prompt.js';
-import type {
-  Config,
-  GitClient,
-  LlmClientPort,
-  NexusClientPort,
-  NexusResult,
-} from '../types.js';
+import type { Config, GitClient, LlmClientPort, NexusClientPort, NexusResult } from '../types.js';
 import pkg from '../../package.json' with { type: 'json' };
 
 const HELP_TEXT = `Usage: nxc [options]
@@ -61,10 +55,7 @@ async function generate(
   if (config.useContext && !cachedContexts) {
     try {
       const query = [...keywords, ...files].join(' ');
-      contexts = await deps.nexus.search(
-        { query, files },
-        { timeoutMs: config.nexusTimeoutMs },
-      );
+      contexts = await deps.nexus.search({ query, files }, { timeoutMs: config.nexusTimeoutMs });
     } catch (err) {
       logger.warn(`Nexus サーバーに接続できませんでした (${config.nexusUrl})`);
       logger.dim(`   ${errorToString(err)}`);
@@ -205,10 +196,7 @@ async function interactive(
   }
 }
 
-export async function main(
-  argv: string[],
-  overrides?: Partial<Deps>,
-): Promise<number> {
+export async function main(argv: string[], overrides?: Partial<Deps>): Promise<number> {
   let flags: Flags;
   try {
     flags = parseFlags(argv);

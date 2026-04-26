@@ -1,5 +1,5 @@
 export const ALLOWED_LANGS = ['ja', 'en'] as const;
-export type Lang = typeof ALLOWED_LANGS[number];
+export type Lang = (typeof ALLOWED_LANGS)[number];
 
 export type DiffMode = 'staged' | 'unstaged' | 'all';
 
