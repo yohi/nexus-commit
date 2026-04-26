@@ -117,4 +117,3 @@ describe('nxc main', () => {
     expect(mockGit.commit).toHaveBeenCalledWith('feat: test commit');
   });
 });
-;
