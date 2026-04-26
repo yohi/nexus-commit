@@ -36,6 +36,7 @@ export interface ChatRequest {
   system: string;
   user: string;
   model: string;
+  temperature?: number;
 }
 
 export interface GitClient {

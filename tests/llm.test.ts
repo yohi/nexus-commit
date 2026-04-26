@@ -10,11 +10,13 @@ describe('OpenAICompatibleLlmClient', () => {
     vi.unstubAllGlobals();
   });
 
-  function mockRes(body: unknown, ok = true, status = 200): Response {
+  function mockRes(body: unknown, ok = true, status = 200, statusText = 'OK'): Response {
     return {
       ok,
       status,
+      statusText,
       json: async () => body,
+      text: async () => typeof body === 'string' ? body : JSON.stringify(body),
     } as Response;
   }
 
@@ -36,20 +38,59 @@ describe('OpenAICompatibleLlmClient', () => {
     );
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await client.chat(
-      { system: 'sys', user: 'usr', model: 'qwen' },
+      { system: 'sys', user: 'usr', model: 'qwen', temperature: 0.5 },
       { timeoutMs: 60000 },
     );
-    const [url, opts] = vi.mocked(fetch).mock.calls[0]!;
+    const call = vi.mocked(fetch).mock.calls[0];
+    expect(call).toBeDefined();
+    const [url, opts] = call as [string, RequestInit];
     expect(url).toBe('http://localhost:11434/v1/chat/completions');
-    expect((opts!.headers as Record<string, string>)['Authorization']).toBe('Bearer k');
-    const body = JSON.parse(opts!.body as string);
+    expect((opts.headers as Record<string, string>).Authorization).toBe('Bearer k');
+    const body = JSON.parse(opts.body as string);
     expect(body.model).toBe('qwen');
     expect(body.stream).toBe(false);
-    expect(body.temperature).toBe(0.2);
+    expect(body.temperature).toBe(0.5);
     expect(body.messages).toEqual([
       { role: 'system', content: 'sys' },
       { role: 'user', content: 'usr' },
     ]);
+  });
+
+  it('removes trailing slash from baseUrl or handles it correctly', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      mockRes({ choices: [{ message: { content: 'x' } }] }),
+    );
+    // test with trailing slash
+    const client1 = new OpenAICompatibleLlmClient('http://localhost:11434/v1/', 'k');
+    await client1.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 60000 });
+    const call1 = vi.mocked(fetch).mock.calls[0];
+    expect(call1).toBeDefined();
+    expect(call1![0]).toBe('http://localhost:11434/v1/chat/completions');
+
+    // test without trailing slash
+    const client2 = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
+    await client2.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 60000 });
+    const call2 = vi.mocked(fetch).mock.calls[1];
+    expect(call2).toBeDefined();
+    expect(call2![0]).toBe('http://localhost:11434/v1/chat/completions');
+  });
+
+  it('throws on invalid timeoutMs', async () => {
+    const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
+    await expect(
+      client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 0 }),
+    ).rejects.toThrow(/Invalid timeoutMs/);
+    await expect(
+      client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: -1 }),
+    ).rejects.toThrow(/Invalid timeoutMs/);
+  });
+
+  it('throws when choices field is missing', async () => {
+    vi.mocked(fetch).mockResolvedValue(mockRes({}));
+    const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
+    await expect(
+      client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
+    ).rejects.toThrow(/choices missing/);
   });
 
   it('throws on empty choices', async () => {
@@ -68,32 +109,26 @@ describe('OpenAICompatibleLlmClient', () => {
     ).rejects.toThrow();
   });
 
-  it('throws on 401', async () => {
-    vi.mocked(fetch).mockResolvedValue(mockRes({}, false, 401));
+  it('throws on 401 with error body', async () => {
+    vi.mocked(fetch).mockResolvedValue(mockRes({ error: 'Unauthorized' }, false, 401, 'Unauthorized'));
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
-    ).rejects.toThrow(/LLM API error: 401/);
+    ).rejects.toThrow(/LLM API error: 401 Unauthorized\nBody: {"error":"Unauthorized"}/);
   });
 
-  it('throws on 500', async () => {
-    vi.mocked(fetch).mockResolvedValue(mockRes({}, false, 500));
-    const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
-    await expect(
-      client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
-    ).rejects.toThrow(/LLM API error: 500/);
-  });
-
-  it('aborts on timeout', async () => {
+  it('throws specific error on timeout', async () => {
     vi.mocked(fetch).mockImplementation(((_url: string, opts: { signal: AbortSignal }) =>
       new Promise((_resolve, reject) => {
-        opts.signal.addEventListener('abort', () =>
-          reject(new DOMException('aborted', 'AbortError')),
-        );
+        opts.signal.addEventListener('abort', () => {
+          const err = new Error('The operation was aborted');
+          err.name = 'AbortError';
+          reject(err);
+        });
       })) as never);
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 10 }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(/LLM API request timed out after 10ms/);
   });
 });

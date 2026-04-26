@@ -17,8 +17,8 @@ function extractContent(data: unknown): string {
   if (choices.length === 0) {
     throw new Error('LLM returned empty choices');
   }
-  const first = choices[0];
-  if (!first || typeof first.message?.content !== 'string') {
+  const first = choices[0] as ChoiceShape;
+  if (typeof first.message?.content !== 'string') {
     throw new Error('LLM returned invalid message content');
   }
   return first.message.content;
@@ -31,11 +31,18 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
   ) {}
 
   async chat(req: ChatRequest, opts: { timeoutMs: number }): Promise<string> {
+    if (typeof opts.timeoutMs !== 'number' || opts.timeoutMs <= 0) {
+      throw new Error(`Invalid timeoutMs: ${opts.timeoutMs}. Must be a positive number.`);
+    }
+
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), opts.timeoutMs);
+    const timer = setTimeout(() => {
+      controller.abort();
+    }, opts.timeoutMs);
     let res: Response;
     try {
-      res = await fetch(`${this.baseUrl}/chat/completions`, {
+      const url = new URL('chat/completions', this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`).toString();
+      res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -48,15 +55,21 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
             { role: 'user', content: req.user },
           ],
           stream: false,
-          temperature: 0.2,
+          temperature: req.temperature ?? 0.2,
         }),
         signal: controller.signal,
       });
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error(`LLM API request timed out after ${opts.timeoutMs}ms`);
+      }
+      throw err;
     } finally {
       clearTimeout(timer);
     }
     if (!res.ok) {
-      throw new Error(`LLM API error: ${res.status}`);
+      const body = await res.text().catch(() => '(failed to read body)');
+      throw new Error(`LLM API error: ${res.status} ${res.statusText}\nBody: ${body}`);
     }
     const data = (await res.json()) as unknown;
     return extractContent(data);
