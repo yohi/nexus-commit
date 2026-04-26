@@ -53,11 +53,12 @@ async function generate(
   diff: string,
   files: string[],
   hint: string | undefined,
-): Promise<string> {
+  cachedContexts?: NexusResult[],
+): Promise<{ message: string; contexts: NexusResult[] }> {
   const keywords = extractKeywords(diff);
-  let contexts: NexusResult[] = [];
+  let contexts: NexusResult[] = cachedContexts ?? [];
 
-  if (config.useContext) {
+  if (config.useContext && !cachedContexts) {
     try {
       const query = [...keywords, ...files].join(' ');
       contexts = await deps.nexus.search(
@@ -93,7 +94,7 @@ async function generate(
       { timeoutMs: config.llmTimeoutMs },
     );
     spinner.stop('生成完了');
-    return result.trim();
+    return { message: result.trim(), contexts };
   } catch (err) {
     spinner.stop('生成失敗');
     logger.error(`ローカル LLM に接続できません: ${errorToString(err)}`);
@@ -109,7 +110,17 @@ async function interactive(
 ): Promise<number> {
   clack.intro('nxc — Nexus Commit');
   let hint: string | undefined;
-  let message = await generate(config, deps, diff, files, hint);
+  let message: string;
+  let contexts: NexusResult[] | undefined;
+
+  try {
+    const res = await generate(config, deps, diff, files, hint);
+    message = res.message;
+    contexts = res.contexts;
+  } catch (err) {
+    clack.cancel('生成に失敗しました');
+    throw err;
+  }
 
   for (;;) {
     clack.note(message, '生成されたコミットメッセージ');
@@ -132,12 +143,16 @@ async function interactive(
       const edited = await clack.text({
         message: 'メッセージを編集してください',
         initialValue: message,
+        validate: (value) => {
+          if (!value.trim()) return 'メッセージを入力してください';
+          return;
+        },
       });
       if (clack.isCancel(edited)) {
         clack.cancel('中止しました');
         return 0;
       }
-      message = edited;
+      message = edited.trim();
     }
 
     if (action === 'regen') {
@@ -151,7 +166,19 @@ async function interactive(
         return 0;
       }
       hint = newHint || undefined;
-      message = await generate(config, deps, diff, files, hint);
+      try {
+        const res = await generate(config, deps, diff, files, hint, contexts);
+        message = res.message;
+        contexts = res.contexts;
+      } catch (err) {
+        clack.cancel('再生成に失敗しました');
+        throw err;
+      }
+      continue;
+    }
+
+    if (!message.trim()) {
+      clack.log.error('コミットメッセージが空です');
       continue;
     }
 
@@ -172,7 +199,10 @@ async function interactive(
   }
 }
 
-export async function main(argv: string[]): Promise<number> {
+export async function main(
+  argv: string[],
+  overrides?: Partial<Deps>,
+): Promise<number> {
   let flags: Flags;
   try {
     flags = parseFlags(argv);
@@ -200,23 +230,23 @@ export async function main(argv: string[]): Promise<number> {
   }
 
   const deps: Deps = {
-    git: new NodeGitClient(),
-    nexus: new HttpNexusClient(config.nexusUrl),
-    llm: new OpenAICompatibleLlmClient(config.llmUrl, config.llmApiKey),
+    git: overrides?.git ?? new NodeGitClient(),
+    nexus: overrides?.nexus ?? new HttpNexusClient(config.nexusUrl),
+    llm: overrides?.llm ?? new OpenAICompatibleLlmClient(config.llmUrl, config.llmApiKey),
   };
 
-  if (!(await deps.git.isRepo())) {
-    logger.error('Not a git repository');
-    return 2;
-  }
-
-  const { diff, files } = await deps.git.getDiff(config.diffMode);
-  if (!diff.trim()) {
-    logger.info('変更がありません');
-    return 0;
-  }
-
   try {
+    if (!(await deps.git.isRepo())) {
+      logger.error('Not a git repository');
+      return 2;
+    }
+
+    const { diff, files } = await deps.git.getDiff(config.diffMode);
+    if (!diff.trim()) {
+      logger.info('変更がありません');
+      return 0;
+    }
+
     return await interactive(config, deps, diff, files);
   } catch (err) {
     const code = (err as { exitCode?: number }).exitCode ?? 1;
