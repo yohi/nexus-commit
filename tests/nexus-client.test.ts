@@ -34,13 +34,28 @@ describe('HttpNexusClient', () => {
     vi.mocked(fetch).mockResolvedValue(mockResponse({ results: [] }));
     const client = new HttpNexusClient('http://localhost:8080');
     await client.search({ query: 'q', files: [] }, { timeoutMs: 5000 });
-    const [url, opts] = vi.mocked(fetch).mock.calls[0]!;
+
+    const calls = vi.mocked(fetch).mock.calls;
+    expect(calls).toHaveLength(1);
+    const [url, opts] = calls[0];
+
     expect(url).toBe('http://localhost:8080/api/search');
-    expect(opts!.method).toBe('POST');
-    expect((opts!.headers as Record<string, string>)['Content-Type']).toBe(
+    expect(opts?.method).toBe('POST');
+    expect((opts?.headers as Record<string, string>)['Content-Type']).toBe(
       'application/json',
     );
-    expect(JSON.parse(opts!.body as string)).toEqual({ query: 'q', files: [] });
+    expect(JSON.parse(opts?.body as string)).toEqual({ query: 'q', files: [] });
+  });
+
+  it('normalizes baseUrl by stripping multiple trailing slashes', async () => {
+    vi.mocked(fetch).mockResolvedValue(mockResponse({ results: [] }));
+    const client = new HttpNexusClient('http://localhost:8080///');
+    await client.search({ query: 'q', files: [] }, { timeoutMs: 5000 });
+
+    const calls = vi.mocked(fetch).mock.calls;
+    expect(calls).toHaveLength(1);
+    const [url] = calls[0];
+    expect(url).toBe('http://localhost:8080/api/search');
   });
 
   it('throws on 5xx status', async () => {

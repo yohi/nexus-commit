@@ -36,7 +36,7 @@ function parseResults(data: unknown): NexusResult[] {
 export class HttpNexusClient implements NexusClientPort {
   private readonly normalizedBaseUrl: string;
   constructor(baseUrl: string) {
-    this.normalizedBaseUrl = baseUrl.replace(/\/$/, '');
+    this.normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
   }
 
   async search(
@@ -44,20 +44,28 @@ export class HttpNexusClient implements NexusClientPort {
     opts: { timeoutMs: number },
   ): Promise<NexusResult[]> {
     const timeout =
-      opts && Number.isFinite(opts.timeoutMs) && opts.timeoutMs > 0
+      Number.isFinite(opts.timeoutMs) && opts.timeoutMs > 0
         ? opts.timeoutMs
         : 5000;
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
-    let res: Response;
+    const timer = setTimeout(() => {
+      controller.abort();
+    }, timeout);
     try {
-      res = await fetch(`${this.normalizedBaseUrl}/api/search`, {
+      const res = await fetch(`${this.normalizedBaseUrl}/api/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req),
         signal: controller.signal,
       });
+
+      if (!res.ok) {
+        throw new Error(`Nexus API error: ${res.status}`);
+      }
+
+      const data = (await res.json()) as unknown;
+      return parseResults(data);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         throw new Error('Nexus search timed out');
@@ -66,10 +74,5 @@ export class HttpNexusClient implements NexusClientPort {
     } finally {
       clearTimeout(timer);
     }
-    if (!res.ok) {
-      throw new Error(`Nexus API error: ${res.status}`);
-    }
-    const data = (await res.json()) as unknown;
-    return parseResults(data);
   }
 }
