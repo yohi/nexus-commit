@@ -26,8 +26,10 @@ describe('main', () => {
     
     // Extract CLI Options from README using markers
     const match = readmeContent.match(/<!-- CLI_OPTIONS_START -->\n```bash\n([\s\S]*?)\n```\n<!-- CLI_OPTIONS_END -->/);
-    expect(match).not.toBeNull();
-    const readmeOptions = match![1].trim();
+    const readmeOptions = match?.[1]?.trim();
+    if (readmeOptions === undefined) {
+      throw new Error('Could not find CLI options markers or content in README.md');
+    }
 
     // Import HELP_TEXT from src/bin/nxc.ts (via main or exported directly if possible)
     // For now, we compare against what main(['--help']) outputs
