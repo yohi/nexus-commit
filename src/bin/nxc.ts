@@ -1,7 +1,10 @@
 #!/usr/bin/env node
-import { parseFlags } from '../flags.js';
+import { fileURLToPath } from 'node:url';
+import { parseFlags, type Flags } from '../flags.js';
 import { loadConfig } from '../config.js';
 import { logger } from '../logger.js';
+import type { Config } from '../types.js';
+import pkg from '../../package.json' with { type: 'json' };
 
 const HELP_TEXT = `Usage: nxc [options]
 
@@ -20,14 +23,17 @@ Options:
   -v, --version  Show version
 `;
 
-const VERSION = '0.1.0';
+function errorToString(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
 
 export async function main(argv: string[]): Promise<number> {
-  let flags;
+  let flags: Flags;
   try {
     flags = parseFlags(argv);
   } catch (err) {
-    logger.error((err as Error).message);
+    logger.error(errorToString(err));
     return 2;
   }
 
@@ -37,15 +43,15 @@ export async function main(argv: string[]): Promise<number> {
   }
 
   if (flags.version) {
-    process.stdout.write(`${VERSION}\n`);
+    process.stdout.write(`${pkg.version}\n`);
     return 0;
   }
 
-  let config;
+  let config: Config;
   try {
     config = loadConfig(process.env, flags);
   } catch (err) {
-    logger.error((err as Error).message);
+    logger.error(errorToString(err));
     return 2;
   }
 
@@ -53,10 +59,12 @@ export async function main(argv: string[]): Promise<number> {
   return 0;
 }
 
-main(process.argv.slice(2)).then(
-  (code) => process.exit(code),
-  (err) => {
-    logger.error((err as Error).message);
-    process.exit(1);
-  },
-);
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main(process.argv.slice(2)).then(
+    (code) => process.exit(code),
+    (err) => {
+      logger.error(errorToString(err));
+      process.exit(1);
+    },
+  );
+}

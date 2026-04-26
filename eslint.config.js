@@ -9,11 +9,10 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['src/**/*.ts', 'tests/**/*.ts'],
+    files: ['src/**/*.ts'],
     languageOptions: {
       globals: {
         ...globals.node,
-        ...globals.vitest,
         fetch: 'readonly',
         DOMException: 'readonly',
         AbortController: 'readonly',
@@ -24,6 +23,18 @@ export default tseslint.config(
         sourceType: 'module',
       },
     },
+  },
+  {
+    files: ['tests/**/*.ts'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.vitest,
+      },
+    },
+  },
+  {
+    files: ['**/*.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
