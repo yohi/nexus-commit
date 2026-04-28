@@ -17,7 +17,7 @@ export const ChatCompletionResponseSchema = z
       .array(
         z
           .object({
-            message: z.object({ content: z.string() }).passthrough(),
+            message: z.object({ content: z.string().nullable() }).passthrough(),
           })
           .passthrough(),
       )
