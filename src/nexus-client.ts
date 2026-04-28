@@ -1,34 +1,17 @@
+import { NexusSearchResponseSchema, formatZodError } from './schemas.js';
 import type { NexusClientPort, NexusResult, NexusSearchRequest } from './types.js';
 
-interface RawItem {
-  file?: unknown;
-  content?: unknown;
-}
-
 function parseResults(data: unknown): NexusResult[] {
-  if (
-    typeof data !== 'object' ||
-    data === null ||
-    !('results' in data) ||
-    !Array.isArray((data as { results: unknown }).results)
-  ) {
-    throw new Error('Invalid Nexus response: missing or non-array "results"');
+  const parsed = NexusSearchResponseSchema.safeParse(data);
+  if (!parsed.success) {
+    throw formatZodError('Invalid Nexus response', parsed.error);
   }
-  const items = (data as { results: unknown[] }).results;
-  return items.map((raw, idx) => {
-    if (raw === null || typeof raw !== 'object') {
-      throw new Error(`Invalid Nexus result item at index ${idx}: expected object`);
-    }
-    const item = raw as RawItem;
-    if (typeof item.file !== 'string' || typeof item.content !== 'string') {
-      throw new Error(`Invalid Nexus result item at index ${idx}: missing required strings`);
-    }
-    return { file: item.file, content: item.content };
-  });
+  return parsed.data.results;
 }
 
 export class HttpNexusClient implements NexusClientPort {
   private readonly normalizedBaseUrl: string;
+
   constructor(baseUrl: string) {
     this.normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
   }
@@ -40,6 +23,7 @@ export class HttpNexusClient implements NexusClientPort {
     const timer = setTimeout(() => {
       controller.abort();
     }, timeout);
+
     try {
       const res = await fetch(`${this.normalizedBaseUrl}/api/search`, {
         method: 'POST',

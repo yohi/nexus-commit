@@ -1,28 +1,13 @@
+import { ChatCompletionResponseSchema, formatZodError } from './schemas.js';
 import type { ChatRequest, LlmClientPort } from './types.js';
 
-interface ChoiceShape {
-  message?: { content?: unknown };
-}
-
 function extractContent(data: unknown): string {
-  if (
-    typeof data !== 'object' ||
-    data === null ||
-    !('choices' in data) ||
-    !Array.isArray((data as { choices: unknown }).choices)
-  ) {
-    throw new Error('Invalid LLM response: choices missing');
+  const parsed = ChatCompletionResponseSchema.safeParse(data);
+  if (!parsed.success) {
+    throw formatZodError('Invalid LLM response', parsed.error);
   }
-  const choices = (data as { choices: (ChoiceShape | null | undefined)[] }).choices;
-  if (choices.length === 0) {
-    throw new Error('LLM returned empty choices');
-  }
-  const first = choices[0];
-  const content = first?.message?.content;
-  if (typeof content !== 'string') {
-    throw new Error('LLM returned invalid message content');
-  }
-  return content;
+  // choices[0] may be undefined in TS even if Zod validates min(1)
+  return parsed.data.choices[0]?.message.content ?? '';
 }
 
 export class OpenAICompatibleLlmClient implements LlmClientPort {
