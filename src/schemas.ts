@@ -34,12 +34,9 @@ export const ModelListResponseSchema = z
 
 /** safeParse 失敗時のエラーメッセージ整形（すべてのエラーパスを報告） */
 export function formatZodError(prefix: string, err: z.ZodError): Error {
-  const firstIssue = err.issues[0];
-  if (!firstIssue) {
-    return new Error(`${prefix}: unknown validation error`);
-  }
   const allPaths = err.issues
     .map(i => (i.path.length > 0 ? i.path.join('.') : '<root>'))
     .join(', ');
-  return new Error(`${prefix} (paths: ${allPaths}): ${firstIssue.message}`);
+  const firstMsg = err.issues[0]!.message;
+  return new Error(`${prefix} (paths: ${allPaths}): ${firstMsg}`);
 }

@@ -6,10 +6,8 @@ function extractContent(data: unknown): string {
   if (!parsed.success) {
     throw formatZodError('Invalid LLM response', parsed.error);
   }
+  // choices is guaranteed to have at least one item by Zod (.min(1))
   const choice = parsed.data.choices[0];
-  if (!choice) {
-    throw new Error('Invalid LLM response: choices array is empty');
-  }
   return choice.message.content;
 }
 
