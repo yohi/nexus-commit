@@ -82,13 +82,13 @@ describe('formatZodError', () => {
     if (parsed.success) throw new Error('expected failure');
     const err = formatZodError('Invalid Nexus response', parsed.error);
     expect(err).toBeInstanceOf(Error);
-    expect(err.message).toMatch(/^Invalid Nexus response at results: /);
+    expect(err.message).toMatch(/^Invalid Nexus response \(paths: results\): /);
   });
 
-  it('path が空なら prefix と message のみ', () => {
+  it('path が空なら <root> と報告する', () => {
     const parsed = NexusSearchResponseSchema.safeParse('not-an-object');
     if (parsed.success) throw new Error('expected failure');
     const err = formatZodError('Invalid Nexus response', parsed.error);
-    expect(err.message).toMatch(/^Invalid Nexus response: /);
+    expect(err.message).toMatch(/^Invalid Nexus response \(paths: <root>\): /);
   });
 });

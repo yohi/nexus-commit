@@ -32,12 +32,14 @@ export const ModelListResponseSchema = z
   })
   .passthrough();
 
-/** safeParse 失敗時のエラーメッセージ整形 */
+/** safeParse 失敗時のエラーメッセージ整形（すべてのエラーパスを報告） */
 export function formatZodError(prefix: string, err: z.ZodError): Error {
-  const first = err.issues[0];
-  if (first === undefined) {
+  if (err.issues.length === 0) {
     return new Error(`${prefix}: unknown validation error`);
   }
-  const path = first.path.length > 0 ? ` at ${first.path.join('.')}` : '';
-  return new Error(`${prefix}${path}: ${first.message}`);
+  const allPaths = err.issues
+    .map(i => i.path.length > 0 ? i.path.join('.') : '<root>')
+    .join(', ');
+  const firstMsg = err.issues[0]!.message;
+  return new Error(`${prefix} (paths: ${allPaths}): ${firstMsg}`);
 }
