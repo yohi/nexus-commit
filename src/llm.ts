@@ -6,7 +6,11 @@ function extractContent(data: unknown): string {
   if (!parsed.success) {
     throw formatZodError('Invalid LLM response', parsed.error);
   }
-  return parsed.data.choices[0]!.message.content;
+  const choice = parsed.data.choices[0];
+  if (!choice) {
+    throw new Error('Invalid LLM response: choices array is empty');
+  }
+  return choice.message.content;
 }
 
 export class OpenAICompatibleLlmClient implements LlmClientPort {
