@@ -131,7 +131,9 @@ describe('OpenAICompatibleLlmClient', () => {
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
-    ).rejects.toThrow(/Invalid LLM response \(paths: choices\): choices must contain at least one item/);
+    ).rejects.toThrow(
+      /Invalid LLM response \(paths: choices\): choices must contain at least one item/,
+    );
   });
 
   it('throws on invalid message shape', async () => {
@@ -143,9 +145,7 @@ describe('OpenAICompatibleLlmClient', () => {
   });
 
   it('handles null content by returning an empty string', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      mockRes({ choices: [{ message: { content: null } }] }),
-    );
+    vi.mocked(fetch).mockResolvedValue(mockRes({ choices: [{ message: { content: null } }] }));
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     const result = await client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 5000 });
     expect(result).toBe('');

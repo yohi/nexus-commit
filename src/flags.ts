@@ -12,6 +12,7 @@ export interface Flags {
   useContext: boolean;
   help: boolean;
   version: boolean;
+  doctor: boolean;
 }
 
 function requireNext(argv: string[], i: number, flag: string): string {
@@ -31,6 +32,7 @@ export function parseFlags(argv: string[]): Flags {
   flags.version = false;
   flags.lang = undefined;
   flags.model = undefined;
+  flags.doctor = false;
 
   let diffModeExplicitlySet = false;
 
@@ -63,6 +65,9 @@ export function parseFlags(argv: string[]): Flags {
         break;
       case '--no-context':
         flags.useContext = false;
+        break;
+      case '--doctor':
+        flags.doctor = true;
         break;
       case '-h':
       case '--help':
