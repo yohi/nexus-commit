@@ -37,6 +37,6 @@ export function formatZodError(prefix: string, err: z.ZodError): Error {
   const allPaths = err.issues
     .map(i => (i.path.length > 0 ? i.path.join('.') : '<root>'))
     .join(', ');
-  const firstMsg = err.issues[0]!.message;
+  const firstMsg = err.issues[0]?.message ?? 'unknown validation error';
   return new Error(`${prefix} (paths: ${allPaths}): ${firstMsg}`);
 }
