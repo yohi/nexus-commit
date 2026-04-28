@@ -373,14 +373,28 @@ function getEncoder(): Tiktoken {
 
 export function countTokens(text: string): number {
   if (text.length === 0) return 0;
-  return getEncoder().encode(text).length;
+  try {
+    return getEncoder().encode(text).length;
+  } catch {
+    // §6.4 フォールバック: encoder 失敗時は 1 token ≒ 4 chars と仮定
+    return Math.ceil(text.length / 4);
+  }
 }
 
 export function truncateToTokens(text: string, budget: number): string {
   if (budget <= 0) return '';
-  const tokens = getEncoder().encode(text);
-  if (tokens.length <= budget) return text;
-  return getEncoder().decode(tokens.slice(0, budget));
+  if (text.length === 0) return '';
+  try {
+    const encoder = getEncoder();
+    const tokens = encoder.encode(text);
+    if (tokens.length <= budget) return text;
+    // js-tiktoken (Pure JS 版) の decode() は string を返す
+    return encoder.decode(tokens.slice(0, budget));
+  } catch {
+    // §6.4 フォールバック: 文字数ベース切り詰め (1 token ≒ 4 chars)
+    const charBudget = budget * 4;
+    return text.length <= charBudget ? text : text.slice(0, charBudget);
+  }
 }
 
 export const TOKEN_SAFETY_MARGIN = 0.85;
@@ -440,6 +454,27 @@ export interface Config {
 
 const maxTokens = parsePositiveInt(env.NEXUS_COMMIT_MAX_TOKENS, 8192, 'maxTokens');
 ```
+
+#### 言語別の実効容量（参考）
+
+`cl100k_base` は OpenAI 系 BPE のため **言語ごとにトークン化効率が大きく異なる**。
+同じ `NEXUS_COMMIT_MAX_TOKENS=8192`（× 0.85 安全マージン適用後 ≒ **6963 tokens**）でも、
+diff/context として収容できる文字量は言語で大きく変動する。
+
+| 言語 | 1 トークンあたりの概算文字数 | 6963 tokens で収まる文字量の目安 |
+|---|---|---|
+| 英語（ASCII 中心） | ~3.5–4 chars/token | 約 24,000–28,000 文字 |
+| 日本語（漢字・かな混在） | ~1–1.5 chars/token | 約 7,000–10,000 文字 |
+| 中国語（簡体字） | ~1 chars/token | 約 7,000 文字 |
+
+> 上記は経験則の目安であり、実際の値はコードコメント比率や記号密度で前後する。
+> Llama/Qwen 等 SentencePiece 系モデルでは更に ±10–25% の差が乗るため、
+> ADR §2.1 の `TOKEN_SAFETY_MARGIN = 0.85` がそのバッファを兼ねる。
+
+旧 `NEXUS_COMMIT_MAX_CHARS=24000` から移行する場合、英語コミット中心であれば
+新デフォルト `8192` でほぼ同等容量を維持できるが、**日本語コミット中心の場合は
+体感容量が約 1/3 に縮む** 点に注意が必要。日本語ユースケースでは
+`NEXUS_COMMIT_MAX_TOKENS=24000` 程度への引き上げを検討する。
 
 ### 6.4 エッジケース
 
@@ -667,7 +702,7 @@ node dist/bin/nxc.js --doctor
 | `--doctor` の `listModels` が一部 OpenAI 互換実装で未対応 | 診断 4 番目で常に fail | チェック#5 を「listModels が成功した場合のみ実施」とし、未対応なら `skip` 表示 |
 | `prompt-file` 読み込みで予期せぬ I/O ブロック | 起動遅延 | `loadPromptFile` は `await` だが小さいファイル想定。タイムアウト不要 |
 | js-tiktoken のバンドルサイズ増 (~1.5MB) | npm install 時間増 | 既知のトレードオフ。AGENTS.md `[CRITICAL]` 制約はユーザー指示で承認済み扱い |
-| `maxChars` → `maxTokens` 破壊的変更でユーザーの env 設定が壊れる | 起動エラー | リリースノート明記。`loadConfig` で `NEXUS_COMMIT_MAX_CHARS` を検出した場合は警告ログ出力（実装コスト低い場合） |
+| `maxChars` → `maxTokens` 破壊的変更でユーザーの env 設定が壊れる | 起動エラー | リリースノート明記。**かつ** `loadConfig` で `NEXUS_COMMIT_MAX_CHARS` を検出した場合は `stderr` に警告ログを出力する（**必須**: 既存ユーザーが無言の起動エラーに遭遇するのを防ぐ。受け入れ基準 §12-14 参照） |
 
 ---
 
@@ -681,6 +716,7 @@ node dist/bin/nxc.js --doctor
 11. `NEXUS_COMMIT_MAX_TOKENS` で指定した値（× 0.85）以下のトークン数に diff+context が収まる
 12. zod 検証失敗時の Error メッセージが `Invalid {Nexus|LLM} response at <path>: <message>` 形式で発火する
 13. `npm test` / `npm run typecheck` / `npm run lint` / `npm run format:check` がすべて成功する（**Devcontainer 内で実行**）
+14. `NEXUS_COMMIT_MAX_CHARS` が環境変数に設定されている状態で `nxc` を起動すると、`stderr` に「`NEXUS_COMMIT_MAX_CHARS` は廃止された旨と `NEXUS_COMMIT_MAX_TOKENS` への移行案内」を含む警告が 1 回出力される（実行自体は継続）
 
 ---
 
