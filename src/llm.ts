@@ -6,8 +6,8 @@ function extractContent(data: unknown): string {
   if (!parsed.success) {
     throw formatZodError('Invalid LLM response', parsed.error);
   }
-  // choices[0].message.content is guaranteed to exist and be a string by Zod
-  return parsed.data.choices[0].message.content;
+  // choices[0] may be undefined in TS even if Zod validates min(1)
+  return parsed.data.choices[0]?.message.content ?? '';
 }
 
 export class OpenAICompatibleLlmClient implements LlmClientPort {
