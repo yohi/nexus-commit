@@ -115,7 +115,7 @@ describe('OpenAICompatibleLlmClient', () => {
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
-    ).rejects.toThrow(/choices missing/);
+    ).rejects.toThrow(/Invalid LLM response \(paths: choices\): /);
   });
 
   it('throws when first choice is null or undefined', async () => {
@@ -123,7 +123,7 @@ describe('OpenAICompatibleLlmClient', () => {
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
-    ).rejects.toThrow(/invalid message content/);
+    ).rejects.toThrow(/Invalid LLM response \(paths: choices\.0\): /);
   });
 
   it('throws on empty choices', async () => {
@@ -131,7 +131,7 @@ describe('OpenAICompatibleLlmClient', () => {
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
-    ).rejects.toThrow(/empty choices/);
+    ).rejects.toThrow(/Invalid LLM response \(paths: choices\): choices must contain at least one item/);
   });
 
   it('throws on invalid message shape', async () => {
@@ -139,7 +139,7 @@ describe('OpenAICompatibleLlmClient', () => {
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
-    ).rejects.toThrow(/invalid message content/);
+    ).rejects.toThrow(/Invalid LLM response \(paths: choices\.0\.message\.content\): /);
   });
 
   it('throws on 401 with error body', async () => {
