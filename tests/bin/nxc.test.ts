@@ -36,6 +36,7 @@ describe('nxc main', () => {
   };
   const mockLlm: LlmClientPort = {
     chat: vi.fn(),
+    listModels: vi.fn(),
   };
 
   const overrides = { git: mockGit, nexus: mockNexus, llm: mockLlm };

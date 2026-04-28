@@ -131,7 +131,9 @@ describe('OpenAICompatibleLlmClient', () => {
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
-    ).rejects.toThrow(/Invalid LLM response \(paths: choices\): choices must contain at least one item/);
+    ).rejects.toThrow(
+      /Invalid LLM response \(paths: choices\): choices must contain at least one item/,
+    );
   });
 
   it('throws on invalid message shape', async () => {
@@ -143,9 +145,7 @@ describe('OpenAICompatibleLlmClient', () => {
   });
 
   it('handles null content by returning an empty string', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      mockRes({ choices: [{ message: { content: null } }] }),
-    );
+    vi.mocked(fetch).mockResolvedValue(mockRes({ choices: [{ message: { content: null } }] }));
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     const result = await client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 5000 });
     expect(result).toBe('');
@@ -176,5 +176,70 @@ describe('OpenAICompatibleLlmClient', () => {
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 10 }),
     ).rejects.toThrow(/LLM API request timed out after 10ms/);
+  });
+});
+
+describe('OpenAICompatibleLlmClient.listModels', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function mockRes(body: unknown, ok = true, status = 200, statusText = 'OK'): Response {
+    return {
+      ok,
+      status,
+      statusText,
+      json: async () => body,
+      text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
+    } as Response;
+  }
+
+  it('GET /models で id 配列を返す', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      mockRes({ data: [{ id: 'qwen2.5-coder:7b' }, { id: 'llama3.2:3b' }] }),
+    );
+    const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
+    const ids = await client.listModels({ timeoutMs: 3000 });
+    expect(ids).toEqual(['qwen2.5-coder:7b', 'llama3.2:3b']);
+
+    const call = vi.mocked(fetch).mock.calls[0]!;
+    const [url, opts] = call as [string, RequestInit];
+    expect(url).toBe('http://localhost:11434/v1/models');
+    expect(opts.method ?? 'GET').toBe('GET');
+    expect((opts.headers as Record<string, string>).Authorization).toBe('Bearer k');
+  });
+
+  it('5xx で throw する', async () => {
+    vi.mocked(fetch).mockResolvedValue(mockRes({}, false, 503, 'Service Unavailable'));
+    const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
+    await expect(client.listModels({ timeoutMs: 3000 })).rejects.toThrow(/LLM API error: 503/);
+  });
+
+  it('zod 検証失敗で throw する', async () => {
+    vi.mocked(fetch).mockResolvedValue(mockRes({ data: 'oops' }));
+    const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
+    await expect(client.listModels({ timeoutMs: 3000 })).rejects.toThrow(
+      /Invalid LLM models response \(paths: data\): /,
+    );
+  });
+
+  it('AbortError で timeout エラーに変換する', async () => {
+    vi.mocked(fetch).mockImplementation(
+      ((_url: string, opts: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          opts.signal.addEventListener('abort', () => {
+            const err = new Error('aborted');
+            err.name = 'AbortError';
+            reject(err);
+          });
+        })) as never,
+    );
+    const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
+    await expect(client.listModels({ timeoutMs: 10 })).rejects.toThrow(
+      /LLM models request timed out after 10ms/,
+    );
   });
 });
