@@ -6,12 +6,8 @@ function extractContent(data: unknown): string {
   if (!parsed.success) {
     throw formatZodError('Invalid LLM response', parsed.error);
   }
-  // choices is guaranteed to have at least one item by Zod (.min(1))
-  const content = parsed.data.choices[0]?.message.content;
-  if (content === undefined) {
-    throw new Error('Invalid LLM response: choices[0].message.content is missing');
-  }
-  return content;
+  // choices[0].message.content is guaranteed to exist and be a string by Zod
+  return parsed.data.choices[0].message.content;
 }
 
 export class OpenAICompatibleLlmClient implements LlmClientPort {
