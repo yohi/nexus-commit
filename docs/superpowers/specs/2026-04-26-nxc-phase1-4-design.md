@@ -464,6 +464,14 @@ export interface Config {
 }
 
 const maxTokens = parsePositiveInt(env.NEXUS_COMMIT_MAX_TOKENS, 8192, 'maxTokens');
+
+// 廃止警告（受け入れ基準 §12-14 対応・必須）
+if (env.NEXUS_COMMIT_MAX_CHARS !== undefined) {
+  process.stderr.write(
+    '[nxc] 警告: NEXUS_COMMIT_MAX_CHARS は廃止されました。' +
+    ' NEXUS_COMMIT_MAX_TOKENS を使用してください。\n',
+  );
+}
 ```
 
 #### 言語別の実効容量（参考）
