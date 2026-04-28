@@ -142,6 +142,15 @@ describe('OpenAICompatibleLlmClient', () => {
     ).rejects.toThrow(/Invalid LLM response \(paths: choices\.0\.message\.content\): /);
   });
 
+  it('handles null content by returning an empty string', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      mockRes({ choices: [{ message: { content: null } }] }),
+    );
+    const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
+    const result = await client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 5000 });
+    expect(result).toBe('');
+  });
+
   it('throws on 401 with error body', async () => {
     vi.mocked(fetch).mockResolvedValue(
       mockRes({ error: 'Unauthorized' }, false, 401, 'Unauthorized'),
