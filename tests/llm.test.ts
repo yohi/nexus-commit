@@ -1,6 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { OpenAICompatibleLlmClient } from '../src/llm.js';
 
+function mockRes(body: unknown, ok = true, status = 200, statusText = 'OK'): Response {
+  return {
+    ok,
+    status,
+    statusText,
+    json: async () => body,
+    text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
+  } as Response;
+}
+
 describe('OpenAICompatibleLlmClient', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn());
