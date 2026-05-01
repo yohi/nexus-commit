@@ -29,13 +29,6 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
   ) {}
 
   async chat(req: ChatRequest, opts: { timeoutMs: number }): Promise<string> {
-    if (
-      typeof opts.timeoutMs !== 'number' ||
-      !Number.isFinite(opts.timeoutMs) ||
-      opts.timeoutMs <= 0
-    ) {
-      throw new Error(`Invalid timeoutMs: ${opts.timeoutMs}. Must be a positive finite number.`);
-    }
     if (req.temperature !== undefined) {
       if (
         typeof req.temperature !== 'number' ||
@@ -50,17 +43,9 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
     }
 
     const temperature = req.temperature ?? 0.2;
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      controller.abort();
-    }, opts.timeoutMs);
-    let res: Response;
-    try {
-      const url = new URL(
-        'chat/completions',
-        this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`,
-      ).toString();
-      res = await fetch(url, {
+    const data = await this.doFetch(
+      'chat/completions',
+      {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -75,62 +60,66 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
           stream: false,
           temperature,
         }),
-        signal: controller.signal,
-      });
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        throw new Error(`LLM API request timed out after ${opts.timeoutMs}ms`);
-      }
-      throw err;
-    } finally {
-      clearTimeout(timer);
-    }
-    if (!res.ok) {
-      const body = await res.text().catch(() => '(failed to read body)');
-      throw new Error(`LLM API error: ${res.status} ${res.statusText}\nBody: ${body}`);
-    }
-    const data = (await res.json()) as unknown;
+      },
+      opts.timeoutMs,
+      'LLM API request',
+    );
     return extractContent(data);
   }
 
   async listModels(opts: { timeoutMs: number }): Promise<string[]> {
-    if (
-      typeof opts.timeoutMs !== 'number' ||
-      !Number.isFinite(opts.timeoutMs) ||
-      opts.timeoutMs <= 0
-    ) {
-      throw new Error(`Invalid timeoutMs: ${opts.timeoutMs}. Must be a positive finite number.`);
-    }
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      controller.abort();
-    }, opts.timeoutMs);
-    let res: Response;
-    try {
-      const url = new URL(
-        'models',
-        this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`,
-      ).toString();
-      res = await fetch(url, {
+    const data = await this.doFetch(
+      'models',
+      {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
         },
+      },
+      opts.timeoutMs,
+      'LLM models request',
+    );
+    return extractModelIds(data);
+  }
+
+  private async doFetch(
+    path: string,
+    init: RequestInit,
+    timeoutMs: number,
+    errorContext: string,
+  ): Promise<unknown> {
+    if (typeof timeoutMs !== 'number' || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+      throw new Error(`Invalid timeoutMs: ${timeoutMs}. Must be a positive finite number.`);
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+
+    try {
+      const url = new URL(
+        path,
+        this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`,
+      ).toString();
+      const res = await fetch(url, {
+        ...init,
         signal: controller.signal,
       });
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => '(failed to read body)');
+        throw new Error(`LLM API error: ${res.status} ${res.statusText}\nBody: ${body}`);
+      }
+
+      return await res.json();
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        throw new Error(`LLM models request timed out after ${opts.timeoutMs}ms`);
+        throw new Error(`${errorContext} timed out after ${timeoutMs}ms`);
       }
       throw err;
     } finally {
       clearTimeout(timer);
     }
-    if (!res.ok) {
-      const body = await res.text().catch(() => '(failed to read body)');
-      throw new Error(`LLM API error: ${res.status} ${res.statusText}\nBody: ${body}`);
-    }
-    const data = (await res.json()) as unknown;
-    return extractModelIds(data);
   }
 }

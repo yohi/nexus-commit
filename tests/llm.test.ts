@@ -242,4 +242,12 @@ describe('OpenAICompatibleLlmClient.listModels', () => {
       /LLM models request timed out after 10ms/,
     );
   });
+
+  it('throws on invalid timeoutMs', async () => {
+    const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
+    await expect(client.listModels({ timeoutMs: 0 })).rejects.toThrow(/Invalid timeoutMs/);
+    await expect(client.listModels({ timeoutMs: -1 })).rejects.toThrow(/Invalid timeoutMs/);
+    await expect(client.listModels({ timeoutMs: NaN })).rejects.toThrow(/Invalid timeoutMs/);
+    await expect(client.listModels({ timeoutMs: Infinity })).rejects.toThrow(/Invalid timeoutMs/);
+  });
 });
