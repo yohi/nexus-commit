@@ -81,6 +81,13 @@ describe('OpenAICompatibleLlmClient', () => {
     expect(url2).toBe('http://localhost:11434/v1/chat/completions');
   });
 
+  it('throws on unsupported protocol (SSRF mitigation)', async () => {
+    const client = new OpenAICompatibleLlmClient('file:///etc/passwd', 'k');
+    await expect(
+      client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
+    ).rejects.toThrow(/Unsupported protocol: file:/);
+  });
+
   it('throws on invalid timeoutMs', async () => {
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await expect(
@@ -205,7 +212,8 @@ describe('OpenAICompatibleLlmClient.listModels', () => {
     const ids = await client.listModels({ timeoutMs: 3000 });
     expect(ids).toEqual(['qwen2.5-coder:7b', 'llama3.2:3b']);
 
-    const call = vi.mocked(fetch).mock.calls[0]!;
+    const call = vi.mocked(fetch).mock.calls[0];
+    if (!call) throw new Error('fetch was not called');
     const [url, opts] = call as [string, RequestInit];
     expect(url).toBe('http://localhost:11434/v1/models');
     expect(opts.method ?? 'GET').toBe('GET');

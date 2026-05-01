@@ -98,11 +98,14 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
     }, timeoutMs);
 
     try {
-      const url = new URL(
+      const urlObj = new URL(
         path,
         this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`,
-      ).toString();
-      const res = await fetch(url, {
+      );
+      if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+        throw new Error(`Unsupported protocol: ${urlObj.protocol}`);
+      }
+      const res = await fetch(urlObj.toString(), {
         ...init,
         signal: controller.signal,
       });
