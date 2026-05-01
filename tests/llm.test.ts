@@ -130,10 +130,8 @@ describe('OpenAICompatibleLlmClient', () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       status: 200,
+      statusText: 'OK',
       url: 'http://localhost:11434/v1/chat/completions',
-      json: async () => {
-        throw new SyntaxError('Unexpected token < in JSON at position 0');
-      },
       text: async () => '<html><body>502 Bad Gateway</body></html>',
     } as Response);
 
