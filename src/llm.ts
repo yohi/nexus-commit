@@ -115,7 +115,18 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
         throw new Error(`LLM API error: ${res.status} ${res.statusText}\nBody: ${body}`);
       }
 
-      return await res.json();
+      try {
+        return await res.json();
+      } catch (jsonErr) {
+        const bodySnippet = await res
+          .text()
+          .then((t) => (t.length > 100 ? `${t.substring(0, 100)}...` : t))
+          .catch(() => '(failed to read body)');
+        throw new Error(
+          `${errorContext} failed to parse JSON response from ${urlObj.toString()}\nStatus: ${res.status}\nBody snippet: ${bodySnippet}`,
+          { cause: jsonErr },
+        );
+      }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         throw new Error(`${errorContext} timed out after ${timeoutMs}ms`);

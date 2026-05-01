@@ -20,16 +20,6 @@ describe('OpenAICompatibleLlmClient', () => {
     vi.unstubAllGlobals();
   });
 
-  function mockRes(body: unknown, ok = true, status = 200, statusText = 'OK'): Response {
-    return {
-      ok,
-      status,
-      statusText,
-      json: async () => body,
-      text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
-    } as Response;
-  }
-
   it('returns choices[0].message.content', async () => {
     vi.mocked(fetch).mockResolvedValue(
       mockRes({ choices: [{ message: { content: 'feat: add X' } }] }),
@@ -96,6 +86,7 @@ describe('OpenAICompatibleLlmClient', () => {
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
     ).rejects.toThrow(/Unsupported protocol: file:/);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('throws on invalid timeoutMs', async () => {
@@ -133,6 +124,25 @@ describe('OpenAICompatibleLlmClient', () => {
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
     ).rejects.toThrow(/Invalid LLM response \(paths: choices\): /);
+  });
+
+  it('throws detailed error on invalid JSON response', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      url: 'http://localhost:11434/v1/chat/completions',
+      json: async () => {
+        throw new SyntaxError('Unexpected token < in JSON at position 0');
+      },
+      text: async () => '<html><body>502 Bad Gateway</body></html>',
+    } as Response);
+
+    const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
+    await expect(
+      client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
+    ).rejects.toThrow(
+      /LLM API request failed to parse JSON response from http:\/\/localhost:11434\/v1\/chat\/completions\nStatus: 200\nBody snippet: <html><body>502 Bad Gateway<\/body><\/html>/,
+    );
   });
 
   it('throws when first choice is null or undefined', async () => {
@@ -203,16 +213,6 @@ describe('OpenAICompatibleLlmClient.listModels', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
-
-  function mockRes(body: unknown, ok = true, status = 200, statusText = 'OK'): Response {
-    return {
-      ok,
-      status,
-      statusText,
-      json: async () => body,
-      text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
-    } as Response;
-  }
 
   it('GET /models で id 配列を返す', async () => {
     vi.mocked(fetch).mockResolvedValue(
