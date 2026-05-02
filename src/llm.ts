@@ -4,6 +4,7 @@ import {
   formatZodError,
 } from './schemas.js';
 import type { ChatRequest, LlmClientPort } from './types.js';
+import { validateSafeUrl } from './security.js';
 
 function extractContent(data: unknown): string {
   const parsed = ChatCompletionResponseSchema.safeParse(data);
@@ -102,17 +103,8 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
         path,
         this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`,
       );
-      if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-        throw new Error(`Unsupported protocol: ${urlObj.protocol}`);
-      }
-      // SSRF Mitigation: Block access to cloud metadata IP
-      if (urlObj.hostname === '169.254.169.254') {
-        throw new Error(`Forbidden hostname: ${urlObj.hostname}`);
-      }
+      validateSafeUrl(urlObj);
 
-      // Codacy/Static Analysis: The URL is constructed from user-controlled baseUrl,
-      // but we have validated the protocol and blocked metadata IPs.
-      // In a CLI tool, the user is the one providing the URL.
       const res = await fetch(urlObj.toString(), {
         ...init,
         signal: controller.signal,

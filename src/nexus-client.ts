@@ -1,5 +1,6 @@
 import { NexusSearchResponseSchema, formatZodError } from './schemas.js';
 import type { NexusClientPort, NexusResult, NexusSearchRequest } from './types.js';
+import { validateSafeUrl } from './security.js';
 
 function parseResults(data: unknown): NexusResult[] {
   const parsed = NexusSearchResponseSchema.safeParse(data);
@@ -25,7 +26,10 @@ export class HttpNexusClient implements NexusClientPort {
     }, timeout);
 
     try {
-      const res = await fetch(`${this.normalizedBaseUrl}/api/search`, {
+      const url = new URL(`${this.normalizedBaseUrl}/api/search`);
+      validateSafeUrl(url);
+
+      const res = await fetch(url.toString(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req),
