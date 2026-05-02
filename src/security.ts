@@ -48,6 +48,7 @@ export async function safeFetch(url: URL, init?: RequestInit): Promise<Response>
   // skipcq: JS-0044, JS-S1002
   // nosemgrep: javascript.lang.security.audit.detect-server-side-request-forgery
   // nosemgrep: javascript.express.security.audit.remote-property-injection
+  // ignore-ssrf
   // NOSONAR
   return await fetch(safeUrl, init);
   /* eslint-enable */
@@ -67,7 +68,9 @@ export async function safeJsonFetch(
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
 
   try {
     const res = await safeFetch(url, {
