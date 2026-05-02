@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { validateSafeUrl } from '../src/security.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { validateSafeUrl, safeJsonFetch } from '../src/security.js';
 
 describe('validateSafeUrl', () => {
   it.each([
@@ -30,5 +30,85 @@ describe('validateSafeUrl', () => {
     'http://[::FFFF:A9FE:A9FE]',
   ])('should throw for forbidden metadata host/IP: %s', (url) => {
     expect(() => validateSafeUrl(new URL(url))).toThrow(/Forbidden hostname:/);
+  });
+});
+
+describe('safeJsonFetch', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllTimers();
+  });
+
+  it('should timeout if the initial fetch takes too long', async () => {
+    vi.mocked(fetch).mockImplementation(async (url, init) => {
+      const signal = (init as RequestInit)?.signal;
+      return new Promise((_, reject) => {
+        signal?.addEventListener('abort', () => {
+          const error = new Error('The operation was aborted');
+          error.name = 'AbortError';
+          reject(error);
+        });
+      });
+    });
+
+    const url = new URL('https://example.com/api');
+    await expect(safeJsonFetch(url, {}, 50, 'Test context'))
+      .rejects.toThrow('Test context timed out after 50ms');
+  });
+
+  it('should timeout if the body read (text()) takes too long', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      text: async () => {
+        return new Promise((_, reject) => {
+          setTimeout(() => {
+            const error = new Error('The operation was aborted');
+            error.name = 'AbortError';
+            reject(error);
+          }, 200);
+        });
+      },
+    } as any);
+
+    const url = new URL('https://example.com/api');
+    await expect(safeJsonFetch(url, {}, 100, 'Test context'))
+      .rejects.toThrow('Test context timed out after 100ms');
+  });
+
+  it('should succeed if everything happens within timeout', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('{"status": "ok"}'),
+    } as any);
+
+    const url = new URL('https://example.com/api');
+    const result = await safeJsonFetch(url, {}, 1000, 'Test context');
+    expect(result).toEqual({ status: 'ok' });
+  });
+
+  it('should throw contextual error if fetch fails', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('Network failure'));
+
+    const url = new URL('https://example.com/api');
+    await expect(safeJsonFetch(url, {}, 1000, 'Test context'))
+      .rejects.toThrow('Test context request to https://example.com/api failed: Network failure');
+  });
+
+  it('should throw contextual error if response is not ok', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      headers: new Map(),
+      text: () => Promise.resolve('Page not found'),
+    } as any);
+
+    const url = new URL('https://example.com/api');
+    await expect(safeJsonFetch(url, {}, 1000, 'Test context'))
+      .rejects.toThrow(/Test context error: 404 Not Found/);
   });
 });
