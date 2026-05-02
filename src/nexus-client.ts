@@ -1,6 +1,6 @@
 import { NexusSearchResponseSchema, formatZodError } from './schemas.js';
 import type { NexusClientPort, NexusResult, NexusSearchRequest } from './types.js';
-import { safeFetch } from './security.js';
+import { safeJsonFetch } from './security.js';
 
 function parseResults(data: unknown): NexusResult[] {
   const parsed = NexusSearchResponseSchema.safeParse(data);
@@ -20,35 +20,18 @@ export class HttpNexusClient implements NexusClientPort {
   async search(req: NexusSearchRequest, opts: { timeoutMs: number }): Promise<NexusResult[]> {
     const timeout = Number.isFinite(opts.timeoutMs) && opts.timeoutMs > 0 ? opts.timeoutMs : 5000;
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      controller.abort();
-    }, timeout);
-
-    try {
-      const url = new URL(`${this.normalizedBaseUrl}/api/search`);
-
-      const res = await safeFetch(url, {
+    const url = new URL(`${this.normalizedBaseUrl}/api/search`);
+    const data = await safeJsonFetch(
+      url,
+      {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req),
         redirect: 'error',
-        signal: controller.signal,
-      });
-
-      if (!res.ok) {
-        throw new Error(`Nexus API error: ${res.status}`);
-      }
-
-      const data = (await res.json()) as unknown;
-      return parseResults(data);
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        throw new Error('Nexus search timed out');
-      }
-      throw err;
-    } finally {
-      clearTimeout(timer);
-    }
+      },
+      timeout,
+      'Nexus search',
+    );
+    return parseResults(data);
   }
 }
