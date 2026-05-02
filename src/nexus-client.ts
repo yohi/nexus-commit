@@ -36,7 +36,7 @@ export class HttpNexusClient implements NexusClientPort {
 
       // skipcq: JS-0044
       // nosemgrep: javascript.lang.security.audit.detect-non-literal-fs-filename
-      const res = await fetch(url.toString(), { // eslint-disable-line security/detect-non-literal-fs-filename
+      const res = await fetch(url.toString(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req),
