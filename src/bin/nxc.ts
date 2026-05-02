@@ -216,6 +216,28 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
     return 0;
   }
 
+  if (flags.doctor) {
+    let config: Config;
+    try {
+      config = loadConfig(process.env, flags);
+    } catch (err) {
+      logger.error(errorToString(err));
+      return 2;
+    }
+    const deps: Deps = {
+      git: overrides?.git ?? new NodeGitClient(),
+      nexus: overrides?.nexus ?? new HttpNexusClient(config.nexusUrl),
+      llm: overrides?.llm ?? new OpenAICompatibleLlmClient(config.llmUrl, config.llmApiKey),
+    };
+    const { runDoctor, renderReport } = await import('../doctor.js');
+    const report = await runDoctor(config, {
+      nexus: deps.nexus,
+      llm: deps.llm,
+    });
+    process.stdout.write(renderReport(report));
+    return report.exitCode;
+  }
+
   let config: Config;
   try {
     config = loadConfig(process.env, flags);
