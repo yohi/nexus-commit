@@ -24,7 +24,12 @@ export function validateSafeUrl(url: URL): void {
 
   // IPv6 cloud metadata addresses
   // AWS: [fd00:ec2::254], GCP: [fe80::4001]
-  if (hostname === '[fd00:ec2::254]' || hostname === '[fe80::4001]') {
+  // Also block IPv4-mapped IPv6 addresses for 169.254.169.254 (SSRF bypass)
+  if (
+    hostname === '[fd00:ec2::254]' ||
+    hostname === '[fe80::4001]' ||
+    /^\[::ffff:(169\.254\.169\.254|a9fe:a9fe)\]$/i.test(hostname)
+  ) {
     throw new Error(`Forbidden hostname: ${hostname}`);
   }
 }

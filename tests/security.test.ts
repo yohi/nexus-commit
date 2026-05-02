@@ -25,6 +25,9 @@ describe('validateSafeUrl', () => {
     'http://metadata',
     'http://[fd00:ec2::254]',
     'http://[fe80::4001]',
+    'http://[::ffff:169.254.169.254]',
+    'http://[::ffff:a9fe:a9fe]',
+    'http://[::FFFF:A9FE:A9FE]',
   ])('should throw for forbidden metadata host/IP: %s', (url) => {
     expect(() => validateSafeUrl(new URL(url))).toThrow(/Forbidden hostname:/);
   });
