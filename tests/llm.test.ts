@@ -207,6 +207,9 @@ describe('OpenAICompatibleLlmClient', () => {
 
     it('throws on invalid timeoutMs', async () => {
       await expect(client.listModels({ timeoutMs: 0 })).rejects.toThrow(/Invalid timeoutMs/);
+      await expect(client.listModels({ timeoutMs: -1 })).rejects.toThrow(/Invalid timeoutMs/);
+      await expect(client.listModels({ timeoutMs: NaN })).rejects.toThrow(/Invalid timeoutMs/);
+      await expect(client.listModels({ timeoutMs: Infinity })).rejects.toThrow(/Invalid timeoutMs/);
     });
 
     it('throws on invalid models response format', async () => {

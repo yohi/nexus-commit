@@ -99,6 +99,15 @@ describe('safeJsonFetch', () => {
     expect(result).toEqual({ status: 'ok' });
   });
 
+  it('should throw on invalid timeoutMs', async () => {
+    const url = new URL('https://example.com/api');
+    const cases = [0, -1, NaN, Infinity];
+    for (const timeoutMs of cases) {
+      await expect(safeJsonFetch(url, {}, timeoutMs, 'Test context'))
+        .rejects.toThrow(`Invalid timeoutMs: ${timeoutMs}. Must be a positive finite number.`);
+    }
+  });
+
   it('should throw contextual error if fetch fails', async () => {
     vi.mocked(fetch).mockRejectedValue(new Error('Network failure'));
 
