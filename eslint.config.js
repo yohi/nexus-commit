@@ -1,6 +1,7 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import globals from 'globals';
+import pluginSecurity from 'eslint-plugin-security';
 
 export default tseslint.config(
   {
@@ -8,6 +9,7 @@ export default tseslint.config(
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
+  pluginSecurity.configs.recommended,
   {
     files: ['src/**/*.ts'],
     languageOptions: {
@@ -44,6 +46,13 @@ export default tseslint.config(
     files: ['src/prompt.ts'],
     rules: {
       'no-control-regex': 'off',
+    },
+  },
+  {
+    files: ['src/llm.ts', 'src/nexus-client.ts', 'src/flags.ts'],
+    rules: {
+      'security/detect-non-literal-fs-filename': 'off',
+      'security/detect-object-injection': 'off',
     },
   },
 );

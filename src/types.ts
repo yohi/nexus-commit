@@ -51,4 +51,5 @@ export interface NexusClientPort {
 
 export interface LlmClientPort {
   chat(req: ChatRequest, opts: { timeoutMs: number }): Promise<string>;
+  listModels(opts: { timeoutMs: number }): Promise<string[]>;
 }

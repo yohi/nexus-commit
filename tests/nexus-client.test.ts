@@ -10,11 +10,13 @@ describe('HttpNexusClient', () => {
     vi.unstubAllGlobals();
   });
 
-  function mockResponse(body: unknown, ok = true, status = 200): Response {
+  function mockResponse(body: unknown, ok = true, status = 200, statusText = 'OK'): Response {
     return {
       ok,
       status,
+      statusText,
       json: async () => body,
+      text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
     } as Response;
   }
 
@@ -54,18 +56,18 @@ describe('HttpNexusClient', () => {
   });
 
   it('throws on 5xx status', async () => {
-    vi.mocked(fetch).mockResolvedValue(mockResponse({}, false, 500));
+    vi.mocked(fetch).mockResolvedValue(mockResponse({}, false, 500, 'Internal Server Error'));
     const client = new HttpNexusClient('http://localhost:8080');
     await expect(client.search({ query: 'q', files: [] }, { timeoutMs: 5000 })).rejects.toThrow(
-      /Nexus API error: 500/,
+      /Nexus search error: 500/,
     );
   });
 
   it('throws on 4xx status', async () => {
-    vi.mocked(fetch).mockResolvedValue(mockResponse({}, false, 404));
+    vi.mocked(fetch).mockResolvedValue(mockResponse({}, false, 404, 'Not Found'));
     const client = new HttpNexusClient('http://localhost:8080');
     await expect(client.search({ query: 'q', files: [] }, { timeoutMs: 5000 })).rejects.toThrow(
-      /Nexus API error: 404/,
+      /Nexus search error: 404/,
     );
   });
 
@@ -99,7 +101,7 @@ describe('HttpNexusClient', () => {
 
       const client = new HttpNexusClient('http://localhost:8080');
       const searchPromise = client.search({ query: 'q', files: [] }, { timeoutMs: 10 });
-      const expectation = expect(searchPromise).rejects.toThrow('Nexus search timed out');
+      const expectation = expect(searchPromise).rejects.toThrow('Nexus search timed out after 10ms');
 
       await vi.advanceTimersByTimeAsync(10);
 

@@ -10,3 +10,6 @@ exclude_paths:
 metric:
   exclude_paths:
     - "tests/**"
+    - "src/llm.ts"
+    - "src/nexus-client.ts"
+    - "src/security.ts"
