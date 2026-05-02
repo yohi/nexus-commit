@@ -8,7 +8,7 @@ export function validateSafeUrl(url: URL): void {
     throw new Error(`Unsupported protocol: ${url.protocol}`);
   }
 
-  const hostname = url.hostname.toLowerCase();
+  const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
 
   // Known cloud metadata service hostnames and IPs
   const forbiddenHostnames = new Set([

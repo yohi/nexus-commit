@@ -27,12 +27,19 @@ export class HttpNexusClient implements NexusClientPort {
 
     try {
       const url = new URL(`${this.normalizedBaseUrl}/api/search`);
+
+      // SSRF Validation: Explicitly validate protocol and hostname inline for SAST tools
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        throw new Error(`Unsupported protocol: ${url.protocol}`);
+      }
       validateSafeUrl(url);
 
+      // skipcq: JS-0044
       const res = await fetch(url.toString(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req),
+        redirect: 'error',
         signal: controller.signal,
       });
 

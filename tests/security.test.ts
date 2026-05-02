@@ -16,6 +16,7 @@ describe('validateSafeUrl', () => {
   it('should throw for forbidden cloud metadata hostnames/IPs', () => {
     expect(() => validateSafeUrl(new URL('http://169.254.169.254'))).toThrow('Forbidden hostname: 169.254.169.254');
     expect(() => validateSafeUrl(new URL('http://metadata.google.internal'))).toThrow('Forbidden hostname: metadata.google.internal');
+    expect(() => validateSafeUrl(new URL('http://metadata.google.internal.'))).toThrow('Forbidden hostname: metadata.google.internal');
     expect(() => validateSafeUrl(new URL('http://100.100.100.200'))).toThrow('Forbidden hostname: 100.100.100.200');
     expect(() => validateSafeUrl(new URL('http://metadata'))).toThrow('Forbidden hostname: metadata');
   });

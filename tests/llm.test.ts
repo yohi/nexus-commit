@@ -183,7 +183,17 @@ describe('OpenAICompatibleLlmClient', () => {
     const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
     await expect(
       client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
-    ).rejects.toThrow(/LLM API error: 401 Unauthorized\nBody: {"error":"Unauthorized"}/);
+    ).rejects.toThrow(/LLM API error: 401 Unauthorized\nBody snippet: {"error":"Unauthorized"}/);
+  });
+
+  it('truncates long error body in message', async () => {
+    const longBody = 'A'.repeat(300);
+    vi.mocked(fetch).mockResolvedValue(mockRes(longBody, false, 500, 'Internal Server Error'));
+    const client = new OpenAICompatibleLlmClient('http://localhost:11434/v1', 'k');
+    const expectedSnippet = 'A'.repeat(200) + '... [truncated]';
+    await expect(
+      client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
+    ).rejects.toThrow(`LLM API error: 500 Internal Server Error\nBody snippet: ${expectedSnippet}`);
   });
 
   it('throws specific error on timeout', async () => {

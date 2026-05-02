@@ -103,10 +103,17 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
         path,
         this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`,
       );
+
+      // SSRF Validation: Explicitly validate protocol and hostname inline for SAST tools
+      if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+        throw new Error(`Unsupported protocol: ${urlObj.protocol}`);
+      }
       validateSafeUrl(urlObj);
 
+      // skipcq: JS-0044
       const res = await fetch(urlObj.toString(), {
         ...init,
+        redirect: 'error',
         signal: controller.signal,
       });
 
@@ -117,7 +124,10 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
       });
 
       if (!res.ok) {
-        throw new Error(`LLM API error: ${res.status} ${res.statusText}\nBody: ${text}`);
+        const MAX_SNIPPET = 200;
+        const snippet =
+          text.length > MAX_SNIPPET ? `${text.slice(0, MAX_SNIPPET)}... [truncated]` : text;
+        throw new Error(`LLM API error: ${res.status} ${res.statusText}\nBody snippet: ${snippet}`);
       }
 
       try {
