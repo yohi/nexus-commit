@@ -111,7 +111,8 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
       validateSafeUrl(urlObj);
 
       // skipcq: JS-0044
-      const res = await fetch(urlObj.toString(), {
+      // We pass the URL object directly; local network access is intended for this CLI tool.
+      const res = await fetch(urlObj, {
         ...init,
         redirect: 'error',
         signal: controller.signal,
