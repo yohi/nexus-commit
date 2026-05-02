@@ -48,11 +48,5 @@ export default tseslint.config(
       'no-control-regex': 'off',
     },
   },
-  {
-    files: ['src/llm.ts', 'src/nexus-client.ts', 'src/flags.ts'],
-    rules: {
-      'security/detect-non-literal-fs-filename': 'off',
-      'security/detect-object-injection': 'off',
-    },
-  },
+
 );

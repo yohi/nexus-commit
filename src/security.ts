@@ -75,23 +75,53 @@ export async function safeJsonFetch(
     if (err instanceof Error && err.name === 'AbortError') {
       throw new Error(`${errorContext} timed out after ${timeoutMs}ms`);
     }
-    throw err;
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`${errorContext} request to ${url.toString()} failed: ${msg}`, { cause: err });
   } finally {
     clearTimeout(timer);
   }
 
-  const text = await response.text().catch(() => {
-    throw new Error(
-      `${errorContext} failed to read response body from ${url.toString()}\nStatus: ${response.status} ${response.statusText}`,
-    );
-  });
-
   if (!response.ok) {
     const MAX_SNIPPET = 200;
-    const snippet =
-      text.length > MAX_SNIPPET ? `${text.slice(0, MAX_SNIPPET)}... [truncated]` : text;
+    const contentLength = response.headers?.get('content-length');
+    if (contentLength && parseInt(contentLength, 10) > 1024 * 1024 * 5) {
+      throw new Error(`${errorContext} error: ${response.status} ${response.statusText}\nBody snippet: [Body too large to read safely]`);
+    }
+
+    let snippet = '';
+    try {
+      if (response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let bytesRead = 0;
+        while (bytesRead < MAX_SNIPPET) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) {
+            snippet += decoder.decode(value, { stream: true });
+            bytesRead += value.length;
+          }
+        }
+        if (bytesRead >= MAX_SNIPPET) {
+          snippet = snippet.slice(0, MAX_SNIPPET) + '... [truncated]';
+        }
+        reader.cancel().catch(() => {});
+      } else {
+        const text = await response.text();
+        snippet = text.length > MAX_SNIPPET ? `${text.slice(0, MAX_SNIPPET)}... [truncated]` : text;
+      }
+    } catch {
+      snippet = '[Failed to read response body]';
+    }
     throw new Error(`${errorContext} error: ${response.status} ${response.statusText}\nBody snippet: ${snippet}`);
   }
+
+  const text = await response.text().catch((err) => {
+    throw new Error(
+      `${errorContext} failed to read response body from ${url.toString()}\nStatus: ${response.status} ${response.statusText}`,
+      { cause: err }
+    );
+  });
 
   try {
     return JSON.parse(text);

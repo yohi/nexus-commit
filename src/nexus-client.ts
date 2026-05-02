@@ -18,8 +18,6 @@ export class HttpNexusClient implements NexusClientPort {
   }
 
   async search(req: NexusSearchRequest, opts: { timeoutMs: number }): Promise<NexusResult[]> {
-    const timeout = Number.isFinite(opts.timeoutMs) && opts.timeoutMs > 0 ? opts.timeoutMs : 5000;
-
     const url = new URL(`${this.normalizedBaseUrl}/api/search`);
     const data = await safeJsonFetch(
       url,
@@ -29,7 +27,7 @@ export class HttpNexusClient implements NexusClientPort {
         body: JSON.stringify(req),
         redirect: 'error',
       },
-      timeout,
+      opts.timeoutMs,
       'Nexus search',
     );
     return parseResults(data);

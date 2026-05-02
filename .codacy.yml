@@ -12,4 +12,3 @@ metric:
     - "tests/**"
     - "src/llm.ts"
     - "src/nexus-client.ts"
-    - "src/security.ts"

@@ -207,5 +207,12 @@ describe('OpenAICompatibleLlmClient', () => {
     it('throws on invalid timeoutMs', async () => {
       await expect(client.listModels({ timeoutMs: 0 })).rejects.toThrow(/Invalid timeoutMs/);
     });
+
+    it('throws on invalid models response format', async () => {
+      vi.mocked(fetch).mockResolvedValue(mockRes({ data: [{}] }));
+      await expect(client.listModels({ timeoutMs: 3000 })).rejects.toThrow(
+        /Invalid LLM models response/,
+      );
+    });
   });
 });
