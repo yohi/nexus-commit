@@ -121,9 +121,9 @@ describe('safeJsonFetch', () => {
       ok: false,
       status: 404,
       statusText: 'Not Found',
-      headers: new Map([['content-type', 'text/plain']]),
+      headers: new Headers({ 'content-type': 'text/plain' }),
       text: () => Promise.resolve('Page not found'),
-    } as Partial<Response> as Response);
+    } as Response);
 
     const url = new URL('https://example.com/api');
     await expect(safeJsonFetch(url, {}, 1000, 'Test context'))
