@@ -143,7 +143,7 @@ export function renderReport(report: DoctorReport): string {
 
     out += `  ${icon} ${res.title.padEnd(25)} ${res.detail || ''}\n`;
     if (res.hint) {
-      out += `       ${pc.dim('Hint: ' + res.hint)}\n`;
+      out += `       ${pc.dim(`Hint: ${res.hint}`)}\n`;
     }
   }
 
