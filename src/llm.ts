@@ -112,7 +112,8 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
 
       // skipcq: JS-0044
       // We pass the URL object directly; local network access is intended for this CLI tool.
-      const res = await fetch(urlObj, {
+      // nosemgrep: javascript.lang.security.audit.detect-non-literal-fs-filename
+      const res = await fetch(urlObj, { // eslint-disable-line security/detect-non-literal-fs-filename
         ...init,
         redirect: 'error',
         signal: controller.signal,

@@ -35,7 +35,8 @@ export class HttpNexusClient implements NexusClientPort {
       validateSafeUrl(url);
 
       // skipcq: JS-0044
-      const res = await fetch(url.toString(), {
+      // nosemgrep: javascript.lang.security.audit.detect-non-literal-fs-filename
+      const res = await fetch(url.toString(), { // eslint-disable-line security/detect-non-literal-fs-filename
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req),
