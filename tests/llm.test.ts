@@ -6,9 +6,10 @@ function mockRes(body: unknown, ok = true, status = 200, statusText = 'OK'): Res
     ok,
     status,
     statusText,
+    headers: new Headers(),
     json: async () => body,
     text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
-  } as Response;
+  } as unknown as Response;
 }
 
 function mockAbort(_url: unknown, opts: { signal: AbortSignal }): Promise<never> {

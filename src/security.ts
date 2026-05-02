@@ -83,7 +83,7 @@ export async function safeJsonFetch(
 
   if (!response.ok) {
     const MAX_SNIPPET = 200;
-    const contentLength = response.headers?.get('content-length');
+    const contentLength = response.headers.get('content-length');
     if (contentLength && parseInt(contentLength, 10) > 1024 * 1024 * 5) {
       throw new Error(`${errorContext} error: ${response.status} ${response.statusText}\nBody snippet: [Body too large to read safely]`);
     }
@@ -97,13 +97,11 @@ export async function safeJsonFetch(
         while (bytesRead < MAX_SNIPPET) {
           const { done, value } = await reader.read();
           if (done) break;
-          if (value) {
-            snippet += decoder.decode(value, { stream: true });
-            bytesRead += value.length;
-          }
+          snippet += decoder.decode(value, { stream: true });
+          bytesRead += value.length;
         }
         if (bytesRead >= MAX_SNIPPET) {
-          snippet = snippet.slice(0, MAX_SNIPPET) + '... [truncated]';
+          snippet = `${snippet.slice(0, MAX_SNIPPET)}... [truncated]`;
         }
         reader.cancel().catch(() => {});
       } else {

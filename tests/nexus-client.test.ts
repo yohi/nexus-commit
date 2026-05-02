@@ -15,9 +15,10 @@ describe('HttpNexusClient', () => {
       ok,
       status,
       statusText,
+      headers: new Headers(),
       json: async () => body,
       text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
-    } as Response;
+    } as unknown as Response;
   }
 
   it('returns NexusResult[] on 200', async () => {
