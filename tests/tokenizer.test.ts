@@ -1,5 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
-import * as tiktoken from 'js-tiktoken';
+import { describe, expect, it } from 'vitest';
 import {
   countTokens,
   truncateToTokens,

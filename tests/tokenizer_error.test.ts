@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from 'vitest';
-import * as tiktoken from 'js-tiktoken';
 
 // モジュールが読み込まれる前にモックを設定
 vi.mock('js-tiktoken', () => {
