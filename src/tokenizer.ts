@@ -15,7 +15,7 @@ export function effectiveBudget(maxTokens: number): number {
   if (maxTokens <= 0) {
     return 0;
   }
-  return Math.floor(maxTokens * TOKEN_SAFETY_MARGIN);
+  return Math.max(1, Math.floor(maxTokens * TOKEN_SAFETY_MARGIN));
 }
 
 export function countTokens(text: string): number {
@@ -25,10 +25,19 @@ export function countTokens(text: string): number {
   try {
     return getEncoder().encode(text).length;
   } catch {
-    return Math.ceil(text.length / 4);
+    return text.length;
   }
 }
 
+/**
+ * 文字列をトークン数で切り詰めます。
+ * 注意: トークン境界で切り詰めるため、マルチバイト文字の途中で切断され、
+ * デコード結果に文字化け (U+FFFD) が生じる可能性があります。
+ *
+ * @param text 切り詰め対象の文字列
+ * @param budget トークン予算
+ * @returns 切り詰められた文字列。失敗した場合は空文字を返します（Fail Closed）。
+ */
 export function truncateToTokens(text: string, budget: number): string {
   if (budget <= 0 || text.length === 0) {
     return '';
@@ -41,8 +50,7 @@ export function truncateToTokens(text: string, budget: number): string {
     }
     return encoder.decode(tokens.slice(0, budget));
   } catch {
-    const charBudget = budget * 4;
-    return text.length <= charBudget ? text : text.slice(0, charBudget);
+    return '';
   }
 }
 

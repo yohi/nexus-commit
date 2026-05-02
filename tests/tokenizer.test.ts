@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import * as tiktoken from 'js-tiktoken';
 import {
   countTokens,
   truncateToTokens,
@@ -52,6 +53,15 @@ describe('effectiveBudget', () => {
 
   it('0 入力は 0', () => {
     expect(effectiveBudget(0)).toBe(0);
+  });
+
+  it('負の入力は 0 を返す', () => {
+    expect(effectiveBudget(-100)).toBe(0);
+  });
+
+  it('1以上の入力に対して最低1トークンを保証する', () => {
+    expect(effectiveBudget(1)).toBe(1);
+    expect(effectiveBudget(5)).toBe(4);
   });
 });
 
