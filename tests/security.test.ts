@@ -44,8 +44,8 @@ describe('safeJsonFetch', () => {
   });
 
   it('should timeout if the initial fetch takes too long', async () => {
-    vi.mocked(fetch).mockImplementation(async (url, init) => {
-      const signal = (init as RequestInit)?.signal;
+    vi.mocked(fetch).mockImplementation(async (_url, init) => {
+      const signal = init?.signal;
       return new Promise((_, reject) => {
         signal?.addEventListener('abort', () => {
           const error = new Error('The operation was aborted');
@@ -61,18 +61,27 @@ describe('safeJsonFetch', () => {
   });
 
   it('should timeout if the body read (text()) takes too long', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      text: async () => {
-        return new Promise((_, reject) => {
-          setTimeout(() => {
-            const error = new Error('The operation was aborted');
-            error.name = 'AbortError';
-            reject(error);
-          }, 200);
-        });
-      },
-    } as any);
+    vi.mocked(fetch).mockImplementation(async (_url, init) => {
+      const signal = init?.signal;
+      return {
+        ok: true,
+        text: async () => {
+          return new Promise((_, reject) => {
+            if (signal?.aborted) {
+              const error = new Error('The operation was aborted');
+              error.name = 'AbortError';
+              reject(error);
+              return;
+            }
+            signal?.addEventListener('abort', () => {
+              const error = new Error('The operation was aborted');
+              error.name = 'AbortError';
+              reject(error);
+            });
+          });
+        },
+      } as Partial<Response> as Response;
+    });
 
     const url = new URL('https://example.com/api');
     await expect(safeJsonFetch(url, {}, 100, 'Test context'))
@@ -83,7 +92,7 @@ describe('safeJsonFetch', () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       text: () => Promise.resolve('{"status": "ok"}'),
-    } as any);
+    } as Partial<Response> as Response);
 
     const url = new URL('https://example.com/api');
     const result = await safeJsonFetch(url, {}, 1000, 'Test context');
@@ -103,9 +112,9 @@ describe('safeJsonFetch', () => {
       ok: false,
       status: 404,
       statusText: 'Not Found',
-      headers: new Map(),
+      headers: new Map([['content-type', 'text/plain']]),
       text: () => Promise.resolve('Page not found'),
-    } as any);
+    } as Partial<Response> as Response);
 
     const url = new URL('https://example.com/api');
     await expect(safeJsonFetch(url, {}, 1000, 'Test context'))
