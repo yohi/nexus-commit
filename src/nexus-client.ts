@@ -1,6 +1,6 @@
 import { NexusSearchResponseSchema, formatZodError } from './schemas.js';
 import type { NexusClientPort, NexusResult, NexusSearchRequest } from './types.js';
-import { validateSafeUrl } from './security.js';
+import { safeFetch } from './security.js';
 
 function parseResults(data: unknown): NexusResult[] {
   const parsed = NexusSearchResponseSchema.safeParse(data);
@@ -28,19 +28,7 @@ export class HttpNexusClient implements NexusClientPort {
     try {
       const url = new URL(`${this.normalizedBaseUrl}/api/search`);
 
-      // SSRF Validation: Explicitly validate protocol and hostname inline for SAST tools
-      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-        throw new Error(`Unsupported protocol: ${url.protocol}`);
-      }
-      validateSafeUrl(url);
-
-      // SSRF Mitigation: Re-construct URL string from validated object to break taint analysis.
-      const safeUrl = `${url.protocol}//${url.hostname}${url.port ? `:${url.port}` : ''}${url.pathname}${url.search}`;
-
-      // skipcq: JS-0044, JS-S1002
-      // nosemgrep: javascript.lang.security.audit.detect-server-side-request-forgery
-      // nosemgrep: javascript.express.security.audit.remote-property-injection
-      const res = await fetch(safeUrl, { // nosonar // eslint-disable-line security/detect-non-literal-fs-filename
+      const res = await safeFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req),

@@ -4,9 +4,10 @@ import {
   formatZodError,
 } from './schemas.js';
 import type { ChatRequest, LlmClientPort } from './types.js';
-import { validateSafeUrl } from './security.js';
+import { safeFetch } from './security.js';
 
 function extractContent(data: unknown): string {
+
   const parsed = ChatCompletionResponseSchema.safeParse(data);
   if (!parsed.success) {
     throw formatZodError('Invalid LLM response', parsed.error);
@@ -104,20 +105,7 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
         this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`,
       );
 
-      // SSRF Validation: Explicitly validate protocol and hostname inline for SAST tools
-      if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-        throw new Error(`Unsupported protocol: ${urlObj.protocol}`);
-      }
-      validateSafeUrl(urlObj);
-
-      // SSRF Mitigation: Re-construct URL string from validated object to break taint analysis.
-      // We explicitly check protocol and hostname again in this scope to satisfy aggressive SAST tools.
-      const safeUrl = `${urlObj.protocol}//${urlObj.hostname}${urlObj.port ? `:${urlObj.port}` : ''}${urlObj.pathname}${urlObj.search}`;
-
-      // skipcq: JS-0044, JS-S1002
-      // nosemgrep: javascript.lang.security.audit.detect-server-side-request-forgery
-      // nosemgrep: javascript.express.security.audit.remote-property-injection
-      const res = await fetch(safeUrl, { // nosonar // eslint-disable-line security/detect-non-literal-fs-filename
+      const res = await safeFetch(urlObj, {
         ...init,
         redirect: 'error',
         signal: controller.signal,

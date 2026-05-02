@@ -11,6 +11,16 @@ function mockRes(body: unknown, ok = true, status = 200, statusText = 'OK'): Res
   } as Response;
 }
 
+function mockAbort(_url: unknown, opts: { signal: AbortSignal }): Promise<never> {
+  return new Promise((_resolve, reject) => {
+    opts.signal.addEventListener('abort', () => {
+      const err = new Error('aborted');
+      err.name = 'AbortError';
+      reject(err);
+    });
+  });
+}
+
 describe('OpenAICompatibleLlmClient', () => {
   const baseUrl = 'http://localhost:11434/v1';
   const apiKey = 'k';
@@ -113,16 +123,7 @@ describe('OpenAICompatibleLlmClient', () => {
     });
 
     it('throws specific error on timeout', async () => {
-      vi.mocked(fetch).mockImplementation(
-        ((_url: string, opts: { signal: AbortSignal }) =>
-          new Promise((_resolve, reject) => {
-            opts.signal.addEventListener('abort', () => {
-              const err = new Error('The operation was aborted');
-              err.name = 'AbortError';
-              reject(err);
-            });
-          })) as never,
-      );
+      vi.mocked(fetch).mockImplementation(mockAbort as never);
       await expect(
         client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 10 }),
       ).rejects.toThrow(/LLM API request timed out after 10ms/);
@@ -143,16 +144,7 @@ describe('OpenAICompatibleLlmClient', () => {
     });
 
     it('AbortError で timeout エラーに変換する', async () => {
-      vi.mocked(fetch).mockImplementation(
-        ((_url: string, opts: { signal: AbortSignal }) =>
-          new Promise((_resolve, reject) => {
-            opts.signal.addEventListener('abort', () => {
-              const err = new Error('aborted');
-              err.name = 'AbortError';
-              reject(err);
-            });
-          })) as never,
-      );
+      vi.mocked(fetch).mockImplementation(mockAbort as never);
       await expect(client.listModels({ timeoutMs: 10 })).rejects.toThrow(
         /LLM models request timed out after 10ms/,
       );
