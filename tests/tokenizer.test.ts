@@ -50,11 +50,9 @@ describe('effectiveBudget', () => {
     expect(effectiveBudget(8192)).toBe(Math.floor(8192 * 0.85));
   });
 
-  it('0 入力は 0', () => {
+  it('1未満の入力は 0 を返す', () => {
+    expect(effectiveBudget(0.5)).toBe(0);
     expect(effectiveBudget(0)).toBe(0);
-  });
-
-  it('負の入力は 0 を返す', () => {
     expect(effectiveBudget(-100)).toBe(0);
   });
 

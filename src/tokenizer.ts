@@ -12,7 +12,7 @@ function getEncoder(): Tiktoken {
 export const TOKEN_SAFETY_MARGIN = 0.85;
 
 export function effectiveBudget(maxTokens: number): number {
-  if (maxTokens <= 0) {
+  if (maxTokens < 1) {
     return 0;
   }
   return Math.max(1, Math.floor(maxTokens * TOKEN_SAFETY_MARGIN));
@@ -25,7 +25,8 @@ export function countTokens(text: string): number {
   try {
     return getEncoder().encode(text).length;
   } catch {
-    return text.length;
+    // 保守的な上限見積もりとして UTF-8 バイト長を返す
+    return Buffer.byteLength(text, 'utf8');
   }
 }
 
