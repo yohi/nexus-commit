@@ -1,5 +1,10 @@
-import { ChatCompletionResponseSchema, formatZodError } from './schemas.js';
+import {
+  ChatCompletionResponseSchema,
+  ModelListResponseSchema,
+  formatZodError,
+} from './schemas.js';
 import type { ChatRequest, LlmClientPort } from './types.js';
+import { safeJsonFetch } from './security.js';
 
 function extractContent(data: unknown): string {
   const parsed = ChatCompletionResponseSchema.safeParse(data);
@@ -10,6 +15,14 @@ function extractContent(data: unknown): string {
   return parsed.data.choices[0]?.message.content ?? '';
 }
 
+function extractModelIds(data: unknown): string[] {
+  const parsed = ModelListResponseSchema.safeParse(data);
+  if (!parsed.success) {
+    throw formatZodError('Invalid LLM models response', parsed.error);
+  }
+  return parsed.data.data.map((m) => m.id);
+}
+
 export class OpenAICompatibleLlmClient implements LlmClientPort {
   constructor(
     private readonly baseUrl: string,
@@ -17,13 +30,6 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
   ) {}
 
   async chat(req: ChatRequest, opts: { timeoutMs: number }): Promise<string> {
-    if (
-      typeof opts.timeoutMs !== 'number' ||
-      !Number.isFinite(opts.timeoutMs) ||
-      opts.timeoutMs <= 0
-    ) {
-      throw new Error(`Invalid timeoutMs: ${opts.timeoutMs}. Must be a positive finite number.`);
-    }
     if (req.temperature !== undefined) {
       if (
         typeof req.temperature !== 'number' ||
@@ -38,17 +44,12 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
     }
 
     const temperature = req.temperature ?? 0.2;
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      controller.abort();
-    }, opts.timeoutMs);
-    let res: Response;
-    try {
-      const url = new URL(
+    const data = await safeJsonFetch(
+      new URL(
         'chat/completions',
         this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`,
-      ).toString();
-      res = await fetch(url, {
+      ),
+      {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,21 +64,31 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
           stream: false,
           temperature,
         }),
-        signal: controller.signal,
-      });
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        throw new Error(`LLM API request timed out after ${opts.timeoutMs}ms`);
-      }
-      throw err;
-    } finally {
-      clearTimeout(timer);
-    }
-    if (!res.ok) {
-      const body = await res.text().catch(() => '(failed to read body)');
-      throw new Error(`LLM API error: ${res.status} ${res.statusText}\nBody: ${body}`);
-    }
-    const data = (await res.json()) as unknown;
+        redirect: 'error',
+      },
+      opts.timeoutMs,
+      'LLM API request',
+    );
     return extractContent(data);
   }
+
+  async listModels(opts: { timeoutMs: number }): Promise<string[]> {
+    const data = await safeJsonFetch(
+      new URL(
+        'models',
+        this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`,
+      ),
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        redirect: 'error',
+      },
+      opts.timeoutMs,
+      'LLM models request',
+    );
+    return extractModelIds(data);
+  }
 }
+

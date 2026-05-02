@@ -86,4 +86,14 @@ describe('parseFlags', () => {
     expect(() => parseFlags(['--unstaged', '--staged'])).toThrow(/Conflicting diff mode flags/);
     expect(() => parseFlags(['--all', '--unstaged'])).toThrow(/Conflicting diff mode flags/);
   });
+
+  it('--doctor flag をパースする', () => {
+    const flags = parseFlags(['--doctor']);
+    expect(flags.doctor).toBe(true);
+  });
+
+  it('--doctor 未指定時は false', () => {
+    const flags = parseFlags([]);
+    expect(flags.doctor).toBe(false);
+  });
 });

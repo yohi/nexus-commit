@@ -22,6 +22,7 @@ Options:
   --staged       Target staged diff (default)
   --unstaged     Target unstaged diff
   --all          Target both staged + unstaged
+  --doctor       Run doctor mode checks
   --lang <ja|en> Output language (default: ja)
   --model <name> Override LLM model name
   --dry-run      Print message to stdout without committing
@@ -39,6 +40,20 @@ interface Deps {
   git: GitClient;
   nexus: NexusClientPort;
   llm: LlmClientPort;
+}
+
+function createDeps(
+  config: Config,
+  overrides?: Partial<Deps>,
+  options: { skipGit?: boolean } = {},
+): Deps {
+  return {
+    git: options.skipGit
+      ? (null as unknown as GitClient)
+      : (overrides?.git ?? new NodeGitClient()),
+    nexus: overrides?.nexus ?? new HttpNexusClient(config.nexusUrl),
+    llm: overrides?.llm ?? new OpenAICompatibleLlmClient(config.llmUrl, config.llmApiKey),
+  };
 }
 
 async function generate(
@@ -223,11 +238,18 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
     return 2;
   }
 
-  const deps: Deps = {
-    git: overrides?.git ?? new NodeGitClient(),
-    nexus: overrides?.nexus ?? new HttpNexusClient(config.nexusUrl),
-    llm: overrides?.llm ?? new OpenAICompatibleLlmClient(config.llmUrl, config.llmApiKey),
-  };
+  if (flags.doctor) {
+    const deps = createDeps(config, overrides, { skipGit: true });
+    const { runDoctor, renderReport } = await import('../doctor.js');
+    const report = await runDoctor(config, {
+      nexus: deps.nexus,
+      llm: deps.llm,
+    });
+    process.stdout.write(renderReport(report));
+    return report.exitCode;
+  }
+
+  const deps = createDeps(config, overrides);
 
   try {
     if (!(await deps.git.isRepo())) {
