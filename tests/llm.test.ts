@@ -6,9 +6,10 @@ function mockRes(body: unknown, ok = true, status = 200, statusText = 'OK'): Res
     ok,
     status,
     statusText,
+    headers: new Headers(),
     json: async () => body,
     text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
-  } as Response;
+  } as unknown as Response;
 }
 
 function mockAbort(_url: unknown, opts: { signal: AbortSignal }): Promise<never> {
@@ -94,11 +95,26 @@ describe('OpenAICompatibleLlmClient', () => {
       await expect(
         client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 0 }),
       ).rejects.toThrow(/Invalid timeoutMs/);
+      await expect(
+        client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: -1 }),
+      ).rejects.toThrow(/Invalid timeoutMs/);
+      await expect(
+        client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: NaN }),
+      ).rejects.toThrow(/Invalid timeoutMs/);
+      await expect(
+        client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: Infinity }),
+      ).rejects.toThrow(/Invalid timeoutMs/);
     });
 
     it('throws on invalid temperature', async () => {
       await expect(
         client.chat({ system: 's', user: 'u', model: 'm', temperature: -0.1 }, { timeoutMs: 1000 }),
+      ).rejects.toThrow(/Invalid temperature/);
+      await expect(
+        client.chat({ system: 's', user: 'u', model: 'm', temperature: 2.1 }, { timeoutMs: 1000 }),
+      ).rejects.toThrow(/Invalid temperature/);
+      await expect(
+        client.chat({ system: 's', user: 'u', model: 'm', temperature: NaN }, { timeoutMs: 1000 }),
       ).rejects.toThrow(/Invalid temperature/);
     });
 
@@ -116,10 +132,49 @@ describe('OpenAICompatibleLlmClient', () => {
       ).rejects.toThrow(/failed to parse JSON response/);
     });
 
+    it('throws when choices field is missing', async () => {
+      vi.mocked(fetch).mockResolvedValue(mockRes({}));
+      await expect(
+        client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
+      ).rejects.toThrow(/Invalid LLM response \(paths: choices\): /);
+    });
+
+    it('throws when first choice is null or undefined', async () => {
+      vi.mocked(fetch).mockResolvedValue(mockRes({ choices: [null] }));
+      await expect(
+        client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
+      ).rejects.toThrow(/Invalid LLM response \(paths: choices\.0\): /);
+    });
+
+    it('throws on empty choices', async () => {
+      vi.mocked(fetch).mockResolvedValue(mockRes({ choices: [] }));
+      await expect(
+        client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
+      ).rejects.toThrow(
+        /Invalid LLM response \(paths: choices\): choices must contain at least one item/,
+      );
+    });
+
+    it('throws on invalid message shape', async () => {
+      vi.mocked(fetch).mockResolvedValue(mockRes({ choices: [{ message: {} }] }));
+      await expect(
+        client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
+      ).rejects.toThrow(/Invalid LLM response \(paths: choices\.0\.message\.content\): /);
+    });
+
     it('handles null content by returning an empty string', async () => {
       vi.mocked(fetch).mockResolvedValue(mockRes({ choices: [{ message: { content: null } }] }));
       const result = await client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 5000 });
       expect(result).toBe('');
+    });
+
+    it('throws on 401 with error body', async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        mockRes({ error: 'Unauthorized' }, false, 401, 'Unauthorized'),
+      );
+      await expect(
+        client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
+      ).rejects.toThrow(/LLM API request error: 401 Unauthorized\nBody snippet: {"error":"Unauthorized"}/);
     });
 
     it('throws specific error on timeout', async () => {
@@ -152,6 +207,13 @@ describe('OpenAICompatibleLlmClient', () => {
 
     it('throws on invalid timeoutMs', async () => {
       await expect(client.listModels({ timeoutMs: 0 })).rejects.toThrow(/Invalid timeoutMs/);
+    });
+
+    it('throws on invalid models response format', async () => {
+      vi.mocked(fetch).mockResolvedValue(mockRes({ data: [{}] }));
+      await expect(client.listModels({ timeoutMs: 3000 })).rejects.toThrow(
+        /Invalid LLM models response/,
+      );
     });
   });
 });

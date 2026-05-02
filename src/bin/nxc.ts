@@ -22,6 +22,7 @@ Options:
   --staged       Target staged diff (default)
   --unstaged     Target unstaged diff
   --all          Target both staged + unstaged
+  --doctor       Run doctor mode checks
   --lang <ja|en> Output language (default: ja)
   --model <name> Override LLM model name
   --dry-run      Print message to stdout without committing

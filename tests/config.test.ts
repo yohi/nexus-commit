@@ -8,6 +8,7 @@ const baseFlags: Flags = {
   useContext: true,
   help: false,
   version: false,
+  doctor: false,
 };
 
 describe('loadConfig', () => {
