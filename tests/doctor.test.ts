@@ -58,4 +58,17 @@ describe('runDoctor', () => {
     expect(modelResult?.status).toBe('fail');
     expect(report.exitCode).toBe(4);
   });
+
+  it('should report fail if LLM endpoint is unreachable', async () => {
+    const deps = {
+      ...mockDeps,
+      llm: {
+        listModels: vi.fn().mockRejectedValue(new Error('LLM connection failed')),
+      } as unknown as LlmClientPort,
+    };
+    const report = await runDoctor(mockConfig, deps);
+    const llmResult = report.results.find((r) => r.title === 'LLM endpoint reachable');
+    expect(llmResult?.status).toBe('fail');
+    expect(report.exitCode).toBe(4);
+  });
 });

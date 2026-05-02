@@ -42,6 +42,20 @@ interface Deps {
   llm: LlmClientPort;
 }
 
+function createDeps(
+  config: Config,
+  overrides?: Partial<Deps>,
+  options: { skipGit?: boolean } = {},
+): Deps {
+  return {
+    git: options.skipGit
+      ? (null as unknown as GitClient)
+      : (overrides?.git ?? new NodeGitClient()),
+    nexus: overrides?.nexus ?? new HttpNexusClient(config.nexusUrl),
+    llm: overrides?.llm ?? new OpenAICompatibleLlmClient(config.llmUrl, config.llmApiKey),
+  };
+}
+
 async function generate(
   config: Config,
   deps: Deps,
@@ -216,19 +230,16 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
     return 0;
   }
 
+  let config: Config;
+  try {
+    config = loadConfig(process.env, flags);
+  } catch (err) {
+    logger.error(errorToString(err));
+    return 2;
+  }
+
   if (flags.doctor) {
-    let config: Config;
-    try {
-      config = loadConfig(process.env, flags);
-    } catch (err) {
-      logger.error(errorToString(err));
-      return 2;
-    }
-    const deps: Deps = {
-      git: overrides?.git ?? new NodeGitClient(),
-      nexus: overrides?.nexus ?? new HttpNexusClient(config.nexusUrl),
-      llm: overrides?.llm ?? new OpenAICompatibleLlmClient(config.llmUrl, config.llmApiKey),
-    };
+    const deps = createDeps(config, overrides, { skipGit: true });
     const { runDoctor, renderReport } = await import('../doctor.js');
     const report = await runDoctor(config, {
       nexus: deps.nexus,
@@ -238,19 +249,7 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
     return report.exitCode;
   }
 
-  let config: Config;
-  try {
-    config = loadConfig(process.env, flags);
-  } catch (err) {
-    logger.error(errorToString(err));
-    return 2;
-  }
-
-  const deps: Deps = {
-    git: overrides?.git ?? new NodeGitClient(),
-    nexus: overrides?.nexus ?? new HttpNexusClient(config.nexusUrl),
-    llm: overrides?.llm ?? new OpenAICompatibleLlmClient(config.llmUrl, config.llmApiKey),
-  };
+  const deps = createDeps(config, overrides);
 
   try {
     if (!(await deps.git.isRepo())) {

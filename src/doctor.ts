@@ -74,6 +74,7 @@ export async function runDoctor(config: Config, deps: DoctorDeps): Promise<Docto
 
   // 4. LLM endpoint reachable
   let models: string[] = [];
+  let llmReachable = false;
   try {
     models = await deps.llm.listModels({ timeoutMs: 3000 });
     results.push({
@@ -81,6 +82,7 @@ export async function runDoctor(config: Config, deps: DoctorDeps): Promise<Docto
       status: 'ok',
       detail: config.llmUrl,
     });
+    llmReachable = true;
   } catch (err) {
     results.push({
       title: 'LLM endpoint reachable',
@@ -91,7 +93,7 @@ export async function runDoctor(config: Config, deps: DoctorDeps): Promise<Docto
   }
 
   // 5. Model existence
-  if (results.find((r) => r.title === 'LLM endpoint reachable')?.status === 'ok') {
+  if (llmReachable) {
     const found = models.includes(config.llmModel);
     results.push({
       title: `Model '${config.llmModel}' found`,
@@ -149,11 +151,10 @@ export function renderReport(report: DoctorReport): string {
 
   const okCount = report.results.filter((r) => r.status === 'ok').length;
   const failCount = report.results.filter((r) => r.status === 'fail').length;
-  const skipCount = report.results.filter(
-    (r) => r.status === 'skip' || r.status === 'warn',
-  ).length;
+  const skipCount = report.results.filter((r) => r.status === 'skip').length;
+  const warnCount = report.results.filter((r) => r.status === 'warn').length;
 
-  out += `\n${pc.bold('Result:')} ${failCount} failed, ${okCount} ok, ${skipCount} skipped (total ${report.results.length})\n`;
+  out += `\n${pc.bold('Result:')} ${failCount} failed, ${okCount} ok, ${skipCount} skipped, ${warnCount} warned (total ${report.results.length})\n`;
   out += `${pc.bold('Exit:')} ${report.exitCode}\n`;
 
   return out;
