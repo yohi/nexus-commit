@@ -48,8 +48,18 @@ function truncateDiffByTokens(diff: string, budget: number): string {
     return '';
   }
 
-  while (blocks.length > 1 && countTokens(blocks.join('\n')) > budget) {
+  const blockTokens = blocks.map((b) => countTokens(b));
+  // join('\n') adds (blocks.length - 1) newlines.
+  // Each newline is 1 token.
+  let total = blockTokens.reduce((s, t) => s + t, 0) + Math.max(0, blocks.length - 1);
+
+  while (blocks.length > 1 && total > budget) {
+    const lastTokens = blockTokens.pop();
     blocks.pop();
+    if (lastTokens !== undefined) {
+      // Subtract the tokens of the block and the newline that was before it.
+      total -= lastTokens + 1;
+    }
   }
 
   let joined = blocks.join('\n');
