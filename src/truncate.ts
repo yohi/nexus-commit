@@ -89,7 +89,14 @@ function truncateContextsByTokens(contexts: NexusResult[], budget: number): Nexu
     return [];
   }
 
-  let total = contexts.reduce((sum, context) => sum + countTokens(context.content), 0);
+  const tokenMap = new Map<NexusResult, number>();
+  let total = 0;
+  for (const c of contexts) {
+    const t = countTokens(c.content);
+    tokenMap.set(c, t);
+    total += t;
+  }
+
   if (total <= budget) {
     return contexts;
   }
@@ -98,19 +105,17 @@ function truncateContextsByTokens(contexts: NexusResult[], budget: number): Nexu
   while (total > budget && remaining.length > 0) {
     let longestIdx = 0;
     let longestTokens = -1;
-    let idx = 0;
 
-    for (const context of remaining) {
-      const tokens = countTokens(context.content);
+    for (let i = 0; i < remaining.length; i++) {
+      const tokens = tokenMap.get(remaining[i])!;
       if (tokens > longestTokens) {
-        longestIdx = idx;
+        longestIdx = i;
         longestTokens = tokens;
       }
-      idx += 1;
     }
 
-    remaining.splice(longestIdx, 1);
     total -= longestTokens;
+    remaining.splice(longestIdx, 1);
   }
 
   return remaining;
