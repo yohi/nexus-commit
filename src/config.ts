@@ -39,6 +39,7 @@ export function loadConfig(env: NodeJS.ProcessEnv, flags: Flags): Config {
     'nexusTimeoutMs',
   );
   const llmTimeoutMs = parsePositiveInt(env.NEXUS_COMMIT_LLM_TIMEOUT_MS, 60000, 'llmTimeoutMs');
+  const llmModel = flags.model ?? env.NEXUS_COMMIT_LLM_MODEL ?? 'qwen2.5-coder:1.5b';
 
   if (env.NEXUS_COMMIT_MAX_CHARS !== undefined) {
     const message =
@@ -51,7 +52,7 @@ export function loadConfig(env: NodeJS.ProcessEnv, flags: Flags): Config {
   return {
     nexusUrl: env.NEXUS_API_URL ?? 'http://localhost:8080',
     llmUrl: env.NEXUS_COMMIT_LLM_URL ?? 'http://localhost:11434/v1',
-    llmModel: flags.model ?? env.NEXUS_COMMIT_LLM_MODEL ?? 'qwen2.5-coder:1.5b',
+    llmModel,
     llmApiKey: env.NEXUS_COMMIT_LLM_API_KEY ?? 'ollama',
     lang,
     maxTokens,
