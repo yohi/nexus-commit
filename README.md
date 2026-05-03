@@ -46,6 +46,24 @@ node dist/bin/nxc.js --help
 | `NEXUS_COMMIT_NEXUS_TIMEOUT_MS` | Nexus 通信のタイムアウト (ms)                                           | `5000`                      |
 | `NEXUS_COMMIT_LLM_TIMEOUT_MS`   | LLM 通信のタイムアウト (ms)                                             | `60000`                     |
 
+## カスタムプロンプト (オプション)
+
+リポジトリの `.github/nxc.prompt.md` を配置すると、その内容が system プロンプトの末尾に
+「# プロジェクト固有ルール」セクションとして自動的に append されます (append-only)。
+
+例: `.github/nxc.prompt.md`
+
+```markdown
+## JIRA 連携ルール
+- ブランチ名が `JIRA-XXX-...` の場合、コミットメッセージ末尾に `Refs: JIRA-XXX` を付与する
+
+## チーム規約
+- scope は `auth`, `payment`, `ui`, `infra` のいずれかから選ぶ
+```
+
+- ファイル不在時はサイレントに無視されます。
+- `nxc --doctor` で配置状況を確認できます。
+
 ### DevContainer
 
 VS Code で `.devcontainer/` を開き、「コンテナで再度開く (Reopen in Container)」を選択してください。
