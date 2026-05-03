@@ -89,7 +89,9 @@ describe('findPromptFile', () => {
     }
   });
 
-  it('アクセス権限エラーなどの致命的なエラーは伝播する', async () => {
+  it.skipIf(process.platform !== 'win32' && process.getuid?.() === 0)(
+    'アクセス権限エラーなどの致命的なエラーは伝播する',
+    async () => {
     const { chmodSync } = await import('node:fs');
     const tmpRoot = makeGitRepo();
     try {
