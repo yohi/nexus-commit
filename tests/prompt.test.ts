@@ -106,3 +106,51 @@ describe('prompt.build', () => {
     expect(user).toContain(diff);
   });
 });
+
+describe('build with customSuffix', () => {
+  it('customSuffix が空なら system に追記しない', () => {
+    const out = build({
+      diff: 'd',
+      contexts: [],
+      files: ['a.ts'],
+      lang: 'ja',
+      customSuffix: '',
+    });
+    expect(out.system).not.toContain('プロジェクト固有ルール');
+  });
+
+  it('customSuffix 未指定でも追記しない', () => {
+    const out = build({
+      diff: 'd',
+      contexts: [],
+      files: ['a.ts'],
+      lang: 'ja',
+    });
+    expect(out.system).not.toContain('プロジェクト固有ルール');
+  });
+
+  it('customSuffix がある場合は system 末尾に append される', () => {
+    const out = build({
+      diff: 'd',
+      contexts: [],
+      files: ['a.ts'],
+      lang: 'ja',
+      customSuffix: '## JIRA\n- prefix branch name',
+    });
+    expect(out.system).toContain('# プロジェクト固有ルール');
+    expect(out.system).toContain('## JIRA');
+    expect(out.system).toContain('- prefix branch name');
+    expect(out.system).toContain('feat / fix / docs');
+  });
+
+  it('customSuffix が空白のみなら追記しない', () => {
+    const out = build({
+      diff: 'd',
+      contexts: [],
+      files: ['a.ts'],
+      lang: 'ja',
+      customSuffix: '   \n  \n',
+    });
+    expect(out.system).not.toContain('プロジェクト固有ルール');
+  });
+});
