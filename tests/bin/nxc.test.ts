@@ -156,6 +156,17 @@ describe('nxc main', () => {
     expect(code).toBe(0);
   });
 
+  it('does not load custom prompt when --doctor is passed', async () => {
+    const { loadPromptFile } = await import('../../src/prompt-file.js');
+    vi.mocked(loadPromptFile).mockResolvedValue({ path: '/foo', content: 'bar' });
+    vi.mocked(mockLlm.listModels).mockResolvedValue(['llama3']);
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await main(['--doctor'], overrides);
+
+    expect(loadPromptFile).not.toHaveBeenCalled();
+  });
+
   it('カスタムプロンプトが PROMPT_SUFFIX_MAX_TOKENS を超えると末尾を切り詰めて警告する', async () => {
     const { loadPromptFile } = await import('../../src/prompt-file.js');
     const { PROMPT_SUFFIX_MAX_TOKENS, countTokens } = await import('../../src/tokenizer.js');

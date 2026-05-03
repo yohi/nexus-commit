@@ -243,6 +243,17 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
     return 2;
   }
 
+  if (flags.doctor) {
+    const deps = createDeps(config, overrides, { skipGit: true });
+    const { runDoctor, renderReport } = await import('../doctor.js');
+    const report = await runDoctor(config, {
+      nexus: deps.nexus,
+      llm: deps.llm,
+    });
+    process.stdout.write(renderReport(report));
+    return report.exitCode;
+  }
+
   let customSuffix: string | undefined;
   try {
     const result = await loadPromptFile();
@@ -261,17 +272,6 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
   } catch (err) {
     logger.warn(`カスタムプロンプトファイルの読み込みに失敗: ${errorToString(err)}`);
     logger.warn('   デフォルトプロンプトで続行します。');
-  }
-
-  if (flags.doctor) {
-    const deps = createDeps(config, overrides, { skipGit: true });
-    const { runDoctor, renderReport } = await import('../doctor.js');
-    const report = await runDoctor(config, {
-      nexus: deps.nexus,
-      llm: deps.llm,
-    });
-    process.stdout.write(renderReport(report));
-    return report.exitCode;
   }
 
   const deps = createDeps(config, overrides);

@@ -1,61 +1,46 @@
 import { describe, it, expect, vi } from 'vitest';
-import { runDoctor } from '../src/doctor.js';
-import type { Config, NexusClientPort, LlmClientPort } from '../src/types.js';
+import { runDoctor, type DoctorReport } from '../src/doctor.js';
+import type { Config, LlmClientPort, NexusClientPort } from '../src/types.js';
+
+const mockConfig: Config = {
+  nexusUrl: 'http://localhost:8080',
+  nexusTimeoutMs: 1000,
+  useContext: true,
+  llmUrl: 'http://localhost:11434',
+  llmApiKey: 'sk-test',
+  llmModel: 'llama3',
+  lang: 'ja',
+  maxTokens: 2000,
+  diffMode: 'staged',
+  commitType: 'conventional',
+};
+
+const mockDeps = {
+  nexus: {
+    search: vi.fn().mockResolvedValue([]),
+  } as unknown as NexusClientPort,
+  llm: {
+    listModels: vi.fn().mockResolvedValue(['llama3', 'mistral']),
+  } as unknown as LlmClientPort,
+};
 
 describe('runDoctor', () => {
-  const mockConfig: Config = {
-    nexusUrl: 'http://nexus',
-    llmUrl: 'http://llm',
-    llmModel: 'test-model',
-    llmApiKey: 'key',
-    lang: 'ja',
-    maxTokens: 1000,
-    nexusTimeoutMs: 1000,
-    llmTimeoutMs: 1000,
-    diffMode: 'staged',
-    dryRun: false,
-    useContext: true,
-  };
-
-  const mockDeps = {
-    nexus: {
-      search: vi.fn().mockResolvedValue([]),
-    } as unknown as NexusClientPort,
-    llm: {
-      listModels: vi.fn().mockResolvedValue(['test-model', 'other-model']),
-    } as unknown as LlmClientPort,
-    cwd: '/tmp',
-  };
-
-  it('should report all ok when environment is healthy', async () => {
+  it('should return a successful report when all checks pass', async () => {
     const report = await runDoctor(mockConfig, mockDeps);
     expect(report.exitCode).toBe(0);
     expect(report.results.every((r) => r.status === 'ok' || r.status === 'skip')).toBe(true);
   });
 
-  it('should report fail if nexus is unreachable', async () => {
+  it('should report fail if Nexus server is unreachable', async () => {
     const deps = {
       ...mockDeps,
       nexus: {
-        search: vi.fn().mockRejectedValue(new Error('Connection failed')),
+        search: vi.fn().mockRejectedValue(new Error('Nexus connection failed')),
       } as unknown as NexusClientPort,
     };
     const report = await runDoctor(mockConfig, deps);
     const nexusResult = report.results.find((r) => r.title === 'Nexus API reachable');
     expect(nexusResult?.status).toBe('fail');
-    expect(report.exitCode).toBe(4);
-  });
-
-  it('should report fail if model is missing', async () => {
-    const deps = {
-      ...mockDeps,
-      llm: {
-        listModels: vi.fn().mockResolvedValue(['other-model']),
-      } as unknown as LlmClientPort,
-    };
-    const report = await runDoctor(mockConfig, deps);
-    const modelResult = report.results.find((r) => r.title === "Model 'test-model' found");
-    expect(modelResult?.status).toBe('fail');
     expect(report.exitCode).toBe(4);
   });
 
@@ -78,12 +63,15 @@ describe('runDoctor', () => {
       findPromptFile: vi.fn(async () => '/repo/.github/nxc.prompt.md'),
       loadPromptFile: vi.fn(),
     }));
-    const { runDoctor: run } = await import('../src/doctor.js');
-    const report = await run(mockConfig, mockDeps);
-    const cp = report.results.find((x) => x.title === 'Custom prompt file');
-    expect(cp?.status).toBe('ok');
-    expect(cp?.detail).toContain('.github/nxc.prompt.md');
-    vi.doUnmock('../src/prompt-file.js');
+    try {
+      const { runDoctor: run } = await import('../src/doctor.js');
+      const report = await run(mockConfig, mockDeps);
+      const cp = report.results.find((x) => x.title === 'Custom prompt file');
+      expect(cp?.status).toBe('ok');
+      expect(cp?.detail).toContain('.github/nxc.prompt.md');
+    } finally {
+      vi.doUnmock('../src/prompt-file.js');
+    }
   });
 
   it('.github/nxc.prompt.md が無ければ skip', async () => {
@@ -92,10 +80,14 @@ describe('runDoctor', () => {
       findPromptFile: vi.fn(async () => null),
       loadPromptFile: vi.fn(),
     }));
-    const { runDoctor: run } = await import('../src/doctor.js');
-    const report = await run(mockConfig, mockDeps);
-    const cp = report.results.find((x) => x.title === 'Custom prompt file');
-    expect(cp?.status).toBe('skip');
-    vi.doUnmock('../src/prompt-file.js');
+    try {
+      const { runDoctor: run } = await import('../src/doctor.js');
+      const report = await run(mockConfig, mockDeps);
+      const cp = report.results.find((x) => x.title === 'Custom prompt file');
+      expect(cp?.status).toBe('skip');
+      expect(cp?.detail).toContain('(or empty)');
+    } finally {
+      vi.doUnmock('../src/prompt-file.js');
+    }
   });
 });

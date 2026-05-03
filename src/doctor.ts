@@ -109,7 +109,7 @@ export async function runDoctor(config: Config, deps: DoctorDeps): Promise<Docto
       results.push({
         title: 'Custom prompt file',
         status: 'skip',
-        detail: 'no .github/nxc.prompt.md',
+        detail: 'no .github/nxc.prompt.md (or empty)',
       });
     } else {
       results.push({
