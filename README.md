@@ -136,7 +136,3 @@ npx @yohi/nexus-commit を使って、変更内容に基づいた Conventional C
 - [SPEC.md](./SPEC.md): 詳細な仕様・アーキテクチャ
 - [CHANGELOG.md](./CHANGELOG.md): 更新履歴
 - [LICENSE](./LICENSE): MIT License
-GELOG.md): 更新履歴
-- [LICENSE](./LICENSE): MIT License
-HANGELOG.md): 更新履歴
-- [LICENSE](./LICENSE): MIT License
