@@ -9,10 +9,11 @@ const mockConfig: Config = {
   llmUrl: 'http://localhost:11434',
   llmApiKey: 'sk-test',
   llmModel: 'llama3',
+  llmTimeoutMs: 60000,
+  dryRun: false,
   lang: 'ja',
   maxTokens: 2000,
   diffMode: 'staged',
-  commitType: 'conventional',
 };
 
 const mockDeps = {
