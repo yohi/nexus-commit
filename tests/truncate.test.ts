@@ -19,7 +19,9 @@ describe('truncate.build (token-aware)', () => {
     const long = 'x '.repeat(2000);
     const diff = mkDiffBlock('a.ts', long);
     const out = build({ diff, contexts: [], maxTokens: 200 });
-    const expectedMax = Math.floor(effectiveBudget(200) * 0.6);
+    // expectedMax = Math.floor(Math.max(1, Math.floor(200 * 0.85)) * 0.6)
+    // 200 * 0.85 = 170, 170 * 0.6 = 102
+    const expectedMax = 102;
     expect(countTokens(out.diff)).toBeLessThanOrEqual(expectedMax);
   });
 

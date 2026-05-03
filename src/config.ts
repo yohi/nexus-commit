@@ -41,9 +41,11 @@ export function loadConfig(env: NodeJS.ProcessEnv, flags: Flags): Config {
   const llmTimeoutMs = parsePositiveInt(env.NEXUS_COMMIT_LLM_TIMEOUT_MS, 60000, 'llmTimeoutMs');
 
   if (env.NEXUS_COMMIT_MAX_CHARS !== undefined) {
-    process.stderr.write(
-      '[nxc] 警告: NEXUS_COMMIT_MAX_CHARS は廃止されました。設定値は無視され、デフォルト値が使用されます。 NEXUS_COMMIT_MAX_TOKENS を使用してください。\n',
-    );
+    const message =
+      env.NEXUS_COMMIT_MAX_TOKENS !== undefined
+        ? '[nxc] 警告: NEXUS_COMMIT_MAX_CHARS は廃止されました。NEXUS_COMMIT_MAX_TOKENS が優先されます。\n'
+        : '[nxc] 警告: NEXUS_COMMIT_MAX_CHARS は廃止されました。デフォルト値が使用されます。NEXUS_COMMIT_MAX_TOKENS を設定してください。\n';
+    process.stderr.write(message);
   }
 
   return {

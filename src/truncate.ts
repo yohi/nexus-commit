@@ -76,10 +76,13 @@ function truncateDiffByTokens(diff: string, budget: number): string {
   const body = newlineIdx === -1 ? '' : last.slice(newlineIdx + 1);
 
   const headerTokens = countTokens(header);
-  const remainingBudget = budget - headerTokens;
-  const truncatedBody = remainingBudget > 0 ? truncateToTokens(body, remainingBudget) : '';
-
-  blocks[blocks.length - 1] = header + truncatedBody;
+  if (headerTokens >= budget) {
+    blocks[blocks.length - 1] = truncateToTokens(header, budget);
+  } else {
+    const remainingBudget = budget - headerTokens;
+    const truncatedBody = truncateToTokens(body, remainingBudget);
+    blocks[blocks.length - 1] = header + truncatedBody;
+  }
   joined = blocks.join('\n');
   return joined;
 }

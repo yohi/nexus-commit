@@ -190,7 +190,7 @@ export interface LlmClient {
 
 - **diff**: 予算超過時は**末尾から**切り詰める（ファイルヘッダ `diff --git` を必ず残す）。ヘッダ各々の `diff --git ...` 〜 次のヘッダ直前までを「ブロック」とし、末尾ブロックから落とす。ブロック内で切る場合も末尾から。
 - **contexts**: 予算超過時は `content` 長い順に落とす（ファイル単位で削除、部分切り詰めはしない）。
-- **両方 0 文字**の状態は想定しない（diff が空なら 4 で早期 exit）。
+- **エッジケース**: `effectiveBudget(maxTokens)` が 0 以下の場合は `diff` も `contexts` も空となり、早期 exit または空の結果を返す。
 
 ---
 
@@ -206,6 +206,7 @@ export interface LlmClient {
 | `NEXUS_COMMIT_LLM_API_KEY`      | `ollama`                    | OpenAI 互換のための形式上のキー                           |
 | `NEXUS_COMMIT_LANG`             | `ja`                        | 生成言語（`ja` / `en`）                                   |
 | `NEXUS_COMMIT_MAX_TOKENS`       | `8192`                      | diff + context の合計トークン数上限（`cl100k_base` 基準） |
+| `NEXUS_COMMIT_MAX_CHARS`        | (廃止)                      | **BREAKING**: 廃止されました。`NEXUS_COMMIT_MAX_TOKENS` を使用してください。 |
 | `NEXUS_COMMIT_NEXUS_TIMEOUT_MS` | `5000`                      | Nexus API タイムアウト                                    |
 | `NEXUS_COMMIT_LLM_TIMEOUT_MS`   | `60000`                     | LLM タイムアウト                                          |
 
