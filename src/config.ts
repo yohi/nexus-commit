@@ -51,8 +51,7 @@ export function loadConfig(env: NodeJS.ProcessEnv, flags: Flags): Config {
   return {
     nexusUrl: env.NEXUS_API_URL ?? 'http://localhost:8080',
     llmUrl: env.NEXUS_COMMIT_LLM_URL ?? 'http://localhost:11434/v1',
-    const llmModel = flags.model ?? env.NEXUS_COMMIT_LLM_MODEL ?? 'qwen2.5-coder:1.5b';
-
+    llmModel: flags.model ?? env.NEXUS_COMMIT_LLM_MODEL ?? 'qwen2.5-coder:1.5b',
     llmApiKey: env.NEXUS_COMMIT_LLM_API_KEY ?? 'ollama',
     lang,
     maxTokens,

@@ -16,7 +16,7 @@ describe('loadConfig', () => {
     const cfg = loadConfig({}, baseFlags);
     expect(cfg.nexusUrl).toBe('http://localhost:8080');
     expect(cfg.llmUrl).toBe('http://localhost:11434/v1');
-    expect(cfg.llmModel).toBe('qwen2.5-coder:7b');
+    expect(cfg.llmModel).toBe('qwen2.5-coder:1.5b');
     expect(cfg.llmApiKey).toBe('ollama');
     expect(cfg.lang).toBe('ja');
     expect(cfg.maxTokens).toBe(8192);
