@@ -1,7 +1,6 @@
 import { version as nodeVersion } from 'node:process';
-import { stat } from 'node:fs/promises';
-import { join } from 'node:path';
 import pc from 'picocolors';
+import { findPromptFile } from './prompt-file.js';
 import type { Config, NexusClientPort, LlmClientPort } from './types.js';
 
 export type CheckStatus = 'ok' | 'warn' | 'fail' | 'skip';
@@ -103,21 +102,27 @@ export async function runDoctor(config: Config, deps: DoctorDeps): Promise<Docto
     });
   }
 
-  // 6. Custom prompt file (Future Phase 4 anticipation)
+  // 6. Custom prompt file
   try {
-    const promptPath = join(deps.cwd || process.cwd(), '.github', 'nxc.prompt.md');
-    // eslint-disable-next-line security/detect-non-literal-fs-filename
-    await stat(promptPath);
+    const promptPath = await findPromptFile(deps.cwd ?? process.cwd());
+    if (promptPath === null) {
+      results.push({
+        title: 'Custom prompt file',
+        status: 'skip',
+        detail: 'no .github/nxc.prompt.md (or empty)',
+      });
+    } else {
+      results.push({
+        title: 'Custom prompt file',
+        status: 'ok',
+        detail: promptPath,
+      });
+    }
+  } catch (err) {
     results.push({
       title: 'Custom prompt file',
-      status: 'ok',
-      detail: '.github/nxc.prompt.md detected',
-    });
-  } catch {
-    results.push({
-      title: 'Custom prompt file',
-      status: 'skip',
-      detail: 'skipped (no .github/nxc.prompt.md)',
+      status: 'warn',
+      detail: err instanceof Error ? err.message : String(err),
     });
   }
 

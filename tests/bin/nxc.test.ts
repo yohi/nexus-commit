@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as clack from '@clack/prompts';
+import { logger } from '../../src/logger.js';
 import { main } from '../../src/bin/nxc.js';
 import type { GitClient, NexusClientPort, LlmClientPort } from '../../src/types.js';
 
@@ -23,6 +24,11 @@ vi.mock('@clack/prompts', () => ({
     warn: vi.fn(),
   },
   note: vi.fn(),
+}));
+
+vi.mock('../../src/prompt-file.js', () => ({
+  loadPromptFile: vi.fn(async () => ({ path: null, content: null })),
+  findPromptFile: vi.fn(async () => null),
 }));
 
 describe('nxc main', () => {
@@ -116,5 +122,78 @@ describe('nxc main', () => {
     const code = await main([], overrides);
     expect(code).toBe(0);
     expect(mockGit.commit).toHaveBeenCalledWith('feat: test commit');
+  });
+
+  it('カスタムプロンプトが存在すれば LLM の system に append される', async () => {
+    const { loadPromptFile } = await import('../../src/prompt-file.js');
+    vi.mocked(loadPromptFile).mockResolvedValue({
+      path: '/repo/.github/nxc.prompt.md',
+      content: '## JIRA prefix rule',
+    });
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'test diff', files: ['a.ts'] });
+    vi.mocked(mockLlm.chat).mockResolvedValue('feat: x');
+    vi.mocked(clack.select).mockResolvedValue('commit');
+
+    await main(['--dry-run'], overrides);
+
+    const call = vi.mocked(mockLlm.chat).mock.calls[0];
+    expect(call).toBeDefined();
+    const req = call?.[0];
+    expect(req?.system).toContain('# プロジェクト固有ルール');
+    expect(req?.system).toContain('## JIRA prefix rule');
+  });
+
+  it('カスタムプロンプト読み込みが I/O エラーでも続行する', async () => {
+    const { loadPromptFile } = await import('../../src/prompt-file.js');
+    vi.mocked(loadPromptFile).mockRejectedValue(new Error('EACCES'));
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'd', files: ['a.ts'] });
+    vi.mocked(mockLlm.chat).mockResolvedValue('feat: x');
+    vi.mocked(clack.select).mockResolvedValue('commit');
+
+    const code = await main(['--dry-run'], overrides);
+    expect(code).toBe(0);
+  });
+
+  it('does not load custom prompt when --doctor is passed', async () => {
+    const { loadPromptFile } = await import('../../src/prompt-file.js');
+    vi.mocked(loadPromptFile).mockResolvedValue({ path: '/foo', content: 'bar' });
+    vi.mocked(mockLlm.listModels).mockResolvedValue(['llama3']);
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await main(['--doctor'], overrides);
+
+    expect(loadPromptFile).not.toHaveBeenCalled();
+  });
+
+  it('カスタムプロンプトが PROMPT_SUFFIX_MAX_TOKENS を超えると末尾を切り詰めて警告する', async () => {
+    const { loadPromptFile } = await import('../../src/prompt-file.js');
+    const { PROMPT_SUFFIX_MAX_TOKENS, countTokens } = await import('../../src/tokenizer.js');
+    const huge = 'The quick brown fox jumps over the lazy dog. '.repeat(300);
+    expect(countTokens(huge)).toBeGreaterThan(PROMPT_SUFFIX_MAX_TOKENS);
+
+    vi.mocked(loadPromptFile).mockResolvedValue({
+      path: '/repo/.github/nxc.prompt.md',
+      content: huge,
+    });
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'd', files: ['a.ts'] });
+    vi.mocked(mockLlm.chat).mockResolvedValue('feat: x');
+    vi.mocked(clack.select).mockResolvedValue('commit');
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+    await main(['--dry-run'], overrides);
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining(`${PROMPT_SUFFIX_MAX_TOKENS}`));
+
+    const call = vi.mocked(mockLlm.chat).mock.calls[0];
+    expect(call).toBeDefined();
+    const systemContent = call?.[0].system ?? '';
+    const suffixSection = systemContent.split('# プロジェクト固有ルール\n')[1] ?? '';
+    expect(countTokens(suffixSection)).toBeLessThanOrEqual(PROMPT_SUFFIX_MAX_TOKENS);
+    expect(suffixSection.length).toBeLessThan(huge.length);
+
+    warnSpy.mockRestore();
   });
 });

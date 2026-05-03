@@ -10,6 +10,8 @@ import { OpenAICompatibleLlmClient } from '../llm.js';
 import { extract as extractKeywords } from '../keywords.js';
 import { build as buildTruncated } from '../truncate.js';
 import { build as buildPrompt } from '../prompt.js';
+import { loadPromptFile } from '../prompt-file.js';
+import { countTokens, PROMPT_SUFFIX_MAX_TOKENS, truncateToTokens } from '../tokenizer.js';
 import type { Config, GitClient, LlmClientPort, NexusClientPort, NexusResult } from '../types.js';
 import pkg from '../../package.json' with { type: 'json' };
 
@@ -62,6 +64,7 @@ async function generate(
   diff: string,
   files: string[],
   hint: string | undefined,
+  customSuffix: string | undefined,
   cachedContexts?: NexusResult[],
 ): Promise<{ message: string; contexts: NexusResult[] }> {
   const keywords = extractKeywords(diff);
@@ -90,6 +93,7 @@ async function generate(
     files,
     lang: config.lang,
     hint,
+    customSuffix,
   });
 
   const spinner = clack.spinner();
@@ -113,6 +117,7 @@ async function interactive(
   deps: Deps,
   diff: string,
   files: string[],
+  customSuffix: string | undefined,
 ): Promise<number> {
   clack.intro('nxc — Nexus Commit');
   let hint: string | undefined;
@@ -120,7 +125,7 @@ async function interactive(
   let contexts: NexusResult[] | undefined;
 
   try {
-    const res = await generate(config, deps, diff, files, hint);
+    const res = await generate(config, deps, diff, files, hint, customSuffix);
     message = res.message;
     contexts = res.contexts;
   } catch (err) {
@@ -179,7 +184,7 @@ async function interactive(
       }
       hint = newHint || undefined;
       try {
-        const res = await generate(config, deps, diff, files, hint, contexts);
+        const res = await generate(config, deps, diff, files, hint, customSuffix, contexts);
         message = res.message;
         contexts = res.contexts;
       } catch (err) {
@@ -249,6 +254,26 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
     return report.exitCode;
   }
 
+  let customSuffix: string | undefined;
+  try {
+    const result = await loadPromptFile();
+    if (result.content !== null) {
+      const tokens = countTokens(result.content);
+      if (tokens > PROMPT_SUFFIX_MAX_TOKENS) {
+        logger.warn(
+          `カスタムプロンプト (.github/nxc.prompt.md) が ${PROMPT_SUFFIX_MAX_TOKENS} ` +
+            `トークン上限を超過 (実測 ${tokens} tokens)。末尾を切り詰めます。`,
+        );
+        customSuffix = truncateToTokens(result.content, PROMPT_SUFFIX_MAX_TOKENS);
+      } else {
+        customSuffix = result.content;
+      }
+    }
+  } catch (err) {
+    logger.warn(`カスタムプロンプトファイルの読み込みに失敗: ${errorToString(err)}`);
+    logger.warn('   デフォルトプロンプトで続行します。');
+  }
+
   const deps = createDeps(config, overrides);
 
   try {
@@ -263,7 +288,7 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
       return 0;
     }
 
-    return await interactive(config, deps, diff, files);
+    return await interactive(config, deps, diff, files, customSuffix);
   } catch (err) {
     const exitCode = (err as { exitCode?: number }).exitCode;
     if (exitCode !== undefined) {

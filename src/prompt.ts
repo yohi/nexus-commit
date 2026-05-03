@@ -6,6 +6,7 @@ export interface PromptInput {
   files: string[];
   lang: Lang;
   hint?: string;
+  customSuffix?: string;
 }
 
 export interface PromptOutput {
@@ -16,9 +17,9 @@ export interface PromptOutput {
 const CC_TYPES = 'feat / fix / docs / style / refactor / perf / test / build / ci / chore / revert';
 const ANSI_RE = /\u001b\[[0-9;]*m/g;
 
-function buildSystem(lang: Lang): string {
+function buildSystem(lang: Lang, customSuffix?: string): string {
   const langClause = lang === 'ja' ? '日本語で' : 'in English';
-  return [
+  const base = [
     'あなたは熟練ソフトウェアエンジニアです。',
     '以下の git diff と関連コンテキストを読み、Conventional Commits v1.0.0 に厳格に準拠した',
     `コミットメッセージを1件だけ、${langClause}生成してください。`,
@@ -31,6 +32,12 @@ function buildSystem(lang: Lang): string {
     '- 破壊的変更は BREAKING CHANGE: フッターを付与',
     '- メッセージ以外のテキスト・コードブロック記号・説明は絶対に出力しない',
   ].join('\n');
+
+  if (customSuffix === undefined || customSuffix.trim().length === 0) {
+    return base;
+  }
+
+  return [base, '', '# プロジェクト固有ルール', customSuffix.trim()].join('\n');
 }
 
 function normalizeContent(content: string): string {
@@ -79,7 +86,7 @@ function buildUser(input: PromptInput): string {
 
 export function build(input: PromptInput): PromptOutput {
   return {
-    system: buildSystem(input.lang),
+    system: buildSystem(input.lang, input.customSuffix),
     user: buildUser(input),
   };
 }
