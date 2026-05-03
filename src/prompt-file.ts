@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
@@ -31,7 +31,7 @@ export async function loadPromptFile(
   const candidate = join(root, '.github', 'nxc.prompt.md');
   try {
     const content = await readFile(candidate, 'utf8');
-    return { path: candidate, content };
+    return { path: candidate, content: content.length > 0 ? content : null };
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
       return { path: candidate, content: null };
@@ -41,6 +41,17 @@ export async function loadPromptFile(
 }
 
 export async function findPromptFile(cwd: string = process.cwd()): Promise<string | null> {
-  const result = await loadPromptFile(cwd);
-  return result.content !== null ? result.path : null;
+  const root = await findGitRoot(cwd);
+  if (root === null) {
+    return null;
+  }
+
+  const candidate = join(root, '.github', 'nxc.prompt.md');
+  try {
+    await access(candidate);
+    const result = await loadPromptFile(cwd);
+    return result.content !== null ? result.path : null;
+  } catch {
+    return null;
+  }
 }
