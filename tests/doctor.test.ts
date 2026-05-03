@@ -71,4 +71,31 @@ describe('runDoctor', () => {
     expect(llmResult?.status).toBe('fail');
     expect(report.exitCode).toBe(4);
   });
+
+  it('.github/nxc.prompt.md が存在すれば ok', async () => {
+    vi.resetModules();
+    vi.doMock('../src/prompt-file.js', () => ({
+      findPromptFile: vi.fn(async () => '/repo/.github/nxc.prompt.md'),
+      loadPromptFile: vi.fn(),
+    }));
+    const { runDoctor: run } = await import('../src/doctor.js');
+    const report = await run(mockConfig, mockDeps);
+    const cp = report.results.find((x) => x.title === 'Custom prompt file');
+    expect(cp?.status).toBe('ok');
+    expect(cp?.detail).toContain('.github/nxc.prompt.md');
+    vi.doUnmock('../src/prompt-file.js');
+  });
+
+  it('.github/nxc.prompt.md が無ければ skip', async () => {
+    vi.resetModules();
+    vi.doMock('../src/prompt-file.js', () => ({
+      findPromptFile: vi.fn(async () => null),
+      loadPromptFile: vi.fn(),
+    }));
+    const { runDoctor: run } = await import('../src/doctor.js');
+    const report = await run(mockConfig, mockDeps);
+    const cp = report.results.find((x) => x.title === 'Custom prompt file');
+    expect(cp?.status).toBe('skip');
+    vi.doUnmock('../src/prompt-file.js');
+  });
 });
