@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { access, readFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 
@@ -22,13 +22,14 @@ export interface PromptFileLookupResult {
 
 export async function loadPromptFile(
   cwd: string = process.cwd(),
+  root?: string,
 ): Promise<PromptFileLookupResult> {
-  const root = await findGitRoot(cwd);
-  if (root === null) {
+  const gitRoot = root ?? (await findGitRoot(cwd));
+  if (gitRoot === null) {
     return { path: null, content: null };
   }
 
-  const candidate = join(root, '.github', 'nxc.prompt.md');
+  const candidate = join(gitRoot, '.github', 'nxc.prompt.md');
   try {
     const content = await readFile(candidate, 'utf8');
     return { path: candidate, content: content.length > 0 ? content : null };
@@ -46,12 +47,6 @@ export async function findPromptFile(cwd: string = process.cwd()): Promise<strin
     return null;
   }
 
-  const candidate = join(root, '.github', 'nxc.prompt.md');
-  try {
-    await access(candidate);
-    const result = await loadPromptFile(cwd);
-    return result.content !== null ? result.path : null;
-  } catch {
-    return null;
-  }
+  const result = await loadPromptFile(cwd, root);
+  return result.content !== null ? result.path : null;
 }

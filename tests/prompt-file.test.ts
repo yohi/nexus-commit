@@ -47,8 +47,10 @@ describe('loadPromptFile', () => {
 
   it('ファイルが空の場合は content は null を返す', async () => {
     mkdirSync(join(tmpRoot, '.github'), { recursive: true });
-    writeFileSync(join(tmpRoot, '.github', 'nxc.prompt.md'), '');
+    const candidate = join(tmpRoot, '.github', 'nxc.prompt.md');
+    writeFileSync(candidate, '');
     const out = await loadPromptFile(tmpRoot);
+    expect(out.path).toBe(candidate);
     expect(out.content).toBeNull();
   });
 
@@ -82,6 +84,23 @@ describe('findPromptFile', () => {
       mkdirSync(join(tmpRoot, '.github'), { recursive: true });
       writeFileSync(join(tmpRoot, '.github', 'nxc.prompt.md'), '');
       expect(await findPromptFile(tmpRoot)).toBeNull();
+    } finally {
+      rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('アクセス権限エラーなどの致命的なエラーは伝播する', async () => {
+    const { chmodSync } = await import('node:fs');
+    const tmpRoot = makeGitRepo();
+    try {
+      const dotGithub = join(tmpRoot, '.github');
+      mkdirSync(dotGithub, { recursive: true });
+      const promptPath = join(dotGithub, 'nxc.prompt.md');
+      writeFileSync(promptPath, 'secrets');
+      // 読み取り権限を剥奪
+      chmodSync(promptPath, 0o000);
+      
+      await expect(findPromptFile(tmpRoot)).rejects.toThrow();
     } finally {
       rmSync(tmpRoot, { recursive: true, force: true });
     }
