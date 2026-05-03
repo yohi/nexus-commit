@@ -42,7 +42,7 @@ export function loadConfig(env: NodeJS.ProcessEnv, flags: Flags): Config {
 
   if (env.NEXUS_COMMIT_MAX_CHARS !== undefined) {
     process.stderr.write(
-      '[nxc] 警告: NEXUS_COMMIT_MAX_CHARS は廃止されました。 NEXUS_COMMIT_MAX_TOKENS を使用してください。\n',
+      '[nxc] 警告: NEXUS_COMMIT_MAX_CHARS は廃止されました。設定値は無視され、デフォルト値が使用されます。 NEXUS_COMMIT_MAX_TOKENS を使用してください。\n',
     );
   }
 
