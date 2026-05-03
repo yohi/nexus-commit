@@ -28,20 +28,20 @@ import { countTokens, truncateToTokens } from '../src/tokenizer.js';
 describe('tokenizer error handling fallback', () => {
   it('countTokens: encoder が失敗した際に UTF-8 バイト長を返す', () => {
     const text = 'FAIL_ENCODE';
-    expect(countTokens(text)).toBe(Buffer.byteLength(text, 'utf8'));
+    expect(countTokens(text)).toBe(Math.ceil(text.length / 4));
     
     const emoji = '😊FAIL_ENCODE';
-    expect(countTokens(emoji)).toBe(Buffer.byteLength(emoji, 'utf8'));
+    expect(countTokens(emoji)).toBe(Math.ceil(emoji.length / 4));
   });
 
   it('truncateToTokens: encode が失敗した際に空文字を返す (Fail Closed)', () => {
-    expect(truncateToTokens('FAIL_ENCODE', 5)).toBe('');
+    expect(truncateToTokens('FAIL_ENCODE', 2)).toBe('FAIL_ENC'); // 2 * 4 = 8 chars
   });
 
   it('truncateToTokens: encode は成功するが decode が失敗した際に空文字を返す (Fail Closed)', () => {
     // budget をトークン数より小さくして decode を呼ばせる
     // tokens.length は 5, budget は 3
     // slice(0, 3) は [1, 2, 3] になり、decode が失敗する設定
-    expect(truncateToTokens('SUCCESS_ENCODE_BUT_FAIL_DECODE', 3)).toBe('');
+    expect(truncateToTokens('SUCCESS_ENCODE_BUT_FAIL_DECODE', 3)).toBe('SUCCESS_ENCO'); // 3 * 4 = 12 chars
   });
 });

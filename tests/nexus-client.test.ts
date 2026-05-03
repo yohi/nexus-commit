@@ -76,7 +76,7 @@ describe('HttpNexusClient', () => {
     vi.mocked(fetch).mockResolvedValue(mockResponse({ other: true }));
     const client = new HttpNexusClient('http://localhost:8080');
     await expect(client.search({ query: 'q', files: [] }, { timeoutMs: 5000 })).rejects.toThrow(
-      /Invalid Nexus response \(paths: results\): /,
+      /Invalid Nexus response at results: /,
     );
   });
 
@@ -84,7 +84,7 @@ describe('HttpNexusClient', () => {
     vi.mocked(fetch).mockResolvedValue(mockResponse({ results: [{ file: 123, content: 'x' }] }));
     const client = new HttpNexusClient('http://localhost:8080');
     await expect(client.search({ query: 'q', files: [] }, { timeoutMs: 5000 })).rejects.toThrow(
-      /Invalid Nexus response \(paths: results\.0\.file\): /,
+      /Invalid Nexus response at results\.0\.file: /,
     );
   });
 
