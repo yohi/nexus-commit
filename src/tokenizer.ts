@@ -55,4 +55,5 @@ export function truncateToTokens(text: string, budget: number): string {
   }
 }
 
+// TODO: Phase 4 の prompt.ts などで利用予定のため先行して export
 export const PROMPT_SUFFIX_MAX_TOKENS = 1000;
