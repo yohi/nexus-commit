@@ -31,6 +31,7 @@ export async function loadPromptFile(
 
   const candidate = join(gitRoot, '.github', 'nxc.prompt.md');
   try {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     const content = await readFile(candidate, 'utf8');
     return { path: candidate, content: content.length > 0 ? content : null };
   } catch (err) {
