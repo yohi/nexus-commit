@@ -15,14 +15,26 @@ describe('truncate.build (token-aware)', () => {
     expect(out.contexts).toEqual(contexts);
   });
 
-  it('diff の token 数を effectiveBudget * 0.6 以下に抑える', () => {
+  it('contexts が空なら diff に全予算 (effectiveBudget) を割り当てる', () => {
     const long = 'x '.repeat(2000);
     const diff = mkDiffBlock('a.ts', long);
     const out = build({ diff, contexts: [], maxTokens: 200 });
-    // expectedMax = Math.floor(Math.max(1, Math.floor(200 * 0.85)) * 0.6)
-    // 200 * 0.85 = 170, 170 * 0.6 = 102
-    const expectedMax = 102;
-    expect(countTokens(out.diff)).toBeLessThanOrEqual(expectedMax);
+    // budget = 200 * 0.85 = 170
+    const budget = effectiveBudget(200);
+    expect(countTokens(out.diff)).toBeLessThanOrEqual(budget);
+    // 以前の制限 (0.6 * 170 = 102) を超えていることを確認
+    expect(countTokens(out.diff)).toBeGreaterThan(102);
+  });
+
+  it('diff が空なら contexts に全予算を割り当てる', () => {
+    const contexts: NexusResult[] = [
+      { file: 'a.ts', content: 'x '.repeat(80) },
+    ];
+    // budget = 200 * 0.85 = 170
+    // 以前の制限 (0.4 * 170 = 68) なら削除されていたはず
+    const out = build({ diff: '', contexts, maxTokens: 200 });
+    expect(out.contexts).toHaveLength(1);
+    expect(out.contexts[0].file).toBe('a.ts');
   });
 
   it('複数 diff block のうち末尾を先に削除する', () => {

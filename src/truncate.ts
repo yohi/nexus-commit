@@ -126,8 +126,20 @@ function truncateContextsByTokens(contexts: NexusResult[], budget: number): Nexu
 
 export function build({ diff, contexts, maxTokens }: TruncateInput): TruncateOutput {
   const budget = effectiveBudget(maxTokens);
-  const diffBudget = Math.floor(budget * 0.6);
-  const contextBudget = budget - diffBudget;
+
+  let diffBudget: number;
+  let contextBudget: number;
+
+  if (contexts.length === 0) {
+    diffBudget = budget;
+    contextBudget = 0;
+  } else if (diff === '') {
+    diffBudget = 0;
+    contextBudget = budget;
+  } else {
+    diffBudget = Math.floor(budget * 0.6);
+    contextBudget = budget - diffBudget;
+  }
 
   return {
     diff: truncateDiffByTokens(diff, diffBudget),
