@@ -63,7 +63,7 @@ function truncateDiffByTokens(diff: string, budget: number): string {
   }
 
   let joined = blocks.join('\n');
-  if (countTokens(joined) <= budget) {
+  if (total <= budget) {
     return joined;
   }
 
