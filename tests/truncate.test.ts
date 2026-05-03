@@ -89,4 +89,31 @@ describe('truncate.build (token-aware)', () => {
     expect(countTokens(out.diff)).toBeLessThanOrEqual(budget);
     expect(out.diff.length).toBeGreaterThan(0);
   });
+
+  it('diff の余剰予算を contexts に再分配する', () => {
+    // maxTokens: 100 -> effectiveBudget = 85
+    // diffBudget (60%) = floor(85 * 0.6) = 51
+    // contextBudget (40%) = 85 - 51 = 34
+    const diff = 'small diff';
+    const diffTokens = countTokens(diff); // 2 tokens
+    const initialContextBudget = 34;
+
+    const content = 'x '.repeat(35);
+    const contextTokens = countTokens(content); // 70 tokens
+
+    // 1. 再分配前の予算 (34) では収まらないことを確認
+    expect(contextTokens).toBeGreaterThan(initialContextBudget);
+
+    const contexts: NexusResult[] = [{ file: 'a.ts', content }];
+    const out = build({ diff, contexts, maxTokens: 100 });
+
+    // 2. 再分配後の予算 (34 + (51 - 2) = 83) に収まっていることを確認
+    const redistributedBudget = initialContextBudget + (51 - diffTokens);
+    expect(contextTokens).toBeLessThanOrEqual(redistributedBudget);
+
+    // 3. 再分配のおかげでコンテキストが保持されていることを検証
+    expect(out.contexts).toHaveLength(1);
+    expect(out.contexts[0]!.file).toBe('a.ts');
+    expect(countTokens(out.contexts[0]!.content)).toBe(contextTokens);
+  });
 });
