@@ -1,3 +1,4 @@
+/* eslint-disable security/detect-non-literal-fs-filename */
 import { execSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -92,19 +93,20 @@ describe('findPromptFile', () => {
   it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
     'アクセス権限エラーなどの致命的なエラーは伝播する',
     async () => {
-    const { chmodSync } = await import('node:fs');
-    const tmpRoot = makeGitRepo();
-    try {
-      const dotGithub = join(tmpRoot, '.github');
-      mkdirSync(dotGithub, { recursive: true });
-      const promptPath = join(dotGithub, 'nxc.prompt.md');
-      writeFileSync(promptPath, 'secrets');
-      // 読み取り権限を剥奪
-      chmodSync(promptPath, 0o000);
-      
-      await expect(findPromptFile(tmpRoot)).rejects.toThrow();
-    } finally {
-      rmSync(tmpRoot, { recursive: true, force: true });
-    }
-  });
+      const { chmodSync } = await import('node:fs');
+      const tmpRoot = makeGitRepo();
+      try {
+        const dotGithub = join(tmpRoot, '.github');
+        mkdirSync(dotGithub, { recursive: true });
+        const promptPath = join(dotGithub, 'nxc.prompt.md');
+        writeFileSync(promptPath, 'secrets');
+        // 読み取り権限を剥奪
+        chmodSync(promptPath, 0o000);
+
+        await expect(findPromptFile(tmpRoot)).rejects.toThrow();
+      } finally {
+        rmSync(tmpRoot, { recursive: true, force: true });
+      }
+    },
+  );
 });

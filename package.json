@@ -12,6 +12,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "scripts": {
     "build": "tsc && node -e \"import('node:fs').then(f=>f.chmodSync('dist/bin/nxc.js',0o755))\"",
     "dev": "tsx src/bin/nxc.ts",
