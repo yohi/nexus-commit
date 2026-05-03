@@ -109,8 +109,8 @@ function truncateContextsByTokens(contexts: NexusResult[], budget: number): Nexu
     let longestIdx = 0;
     let longestTokens = -1;
 
-    for (let i = 0; i < remaining.length; i++) {
-      const tokens = tokenMap.get(remaining[i]!) ?? 0;
+    for (const [i, context] of remaining.entries()) {
+      const tokens = tokenMap.get(context) ?? 0;
       if (tokens > longestTokens) {
         longestIdx = i;
         longestTokens = tokens;
