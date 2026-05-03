@@ -34,7 +34,7 @@ describe('truncate.build (token-aware)', () => {
     // 以前の制限 (0.4 * 170 = 68) なら削除されていたはず
     const out = build({ diff: '', contexts, maxTokens: 200 });
     expect(out.contexts).toHaveLength(1);
-    expect(out.contexts[0].file).toBe('a.ts');
+    expect(out.contexts[0]!.file).toBe('a.ts');
   });
 
   it('複数 diff block のうち末尾を先に削除する', () => {
