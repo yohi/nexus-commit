@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { runDoctor, type DoctorReport } from '../src/doctor.js';
+import { runDoctor } from '../src/doctor.js';
 import type { Config, LlmClientPort, NexusClientPort } from '../src/types.js';
 
 const mockConfig: Config = {
