@@ -25,7 +25,7 @@ export function countTokens(text: string): number {
   try {
     return getEncoder().encode(text).length;
   } catch {
-    return Math.ceil(text.length / 4);
+    return Buffer.byteLength(text, 'utf8');
   }
 }
 
