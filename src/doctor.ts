@@ -41,7 +41,7 @@ export async function runDoctor(config: Config, deps: DoctorDeps): Promise<Docto
   results.push({
     title: 'Configuration',
     status: 'ok',
-    detail: `llmUrl=${config.llmUrl}, model=${config.llmModel}, lang=${config.lang}, apiKey=***`,
+    detail: `llmUrl=${config.llmUrl}, model=${config.llmModel}, lang=${config.lang}, maxTokens=${config.maxTokens}, apiKey=***`,
   });
 
   // 3. Nexus API reachable
@@ -99,9 +99,7 @@ export async function runDoctor(config: Config, deps: DoctorDeps): Promise<Docto
       title: `Model '${config.llmModel}' found`,
       status: found ? 'ok' : 'fail',
       detail: found ? undefined : `Available: ${models.join(', ')}`,
-      hint: found
-        ? undefined
-        : `Run \`ollama pull ${config.llmModel}\` or check your model name.`,
+      hint: found ? undefined : `Run \`ollama pull ${config.llmModel}\` or check your model name.`,
     });
   }
 

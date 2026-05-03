@@ -35,16 +35,16 @@ node dist/bin/nxc.js --help
 
 ### 環境変数
 
-| 変数名 | 説明 | デフォルト値 |
-|----------|-------------|---------|
-| `NEXUS_API_URL` | Nexus API のベースURL | `http://localhost:8080` |
-| `NEXUS_COMMIT_LLM_URL` | LLM API のエンドポイント | `http://localhost:11434/v1` |
-| `NEXUS_COMMIT_LLM_MODEL` | 使用するモデル名 | `qwen2.5-coder:7b` |
-| `NEXUS_COMMIT_LLM_API_KEY` | LLM API キー | `ollama` |
-| `NEXUS_COMMIT_LANG` | 出力言語 (`ja` または `en`) | `ja` |
-| `NEXUS_COMMIT_MAX_CHARS` | プロンプトの最大文字数 | `24000` |
-| `NEXUS_COMMIT_NEXUS_TIMEOUT_MS` | Nexus 通信のタイムアウト (ms) | `5000` |
-| `NEXUS_COMMIT_LLM_TIMEOUT_MS` | LLM 通信のタイムアウト (ms) | `60000` |
+| 変数名                          | 説明                                                                    | デフォルト値                |
+| ------------------------------- | ----------------------------------------------------------------------- | --------------------------- |
+| `NEXUS_API_URL`                 | Nexus API のベースURL                                                   | `http://localhost:8080`     |
+| `NEXUS_COMMIT_LLM_URL`          | LLM API のエンドポイント                                                | `http://localhost:11434/v1` |
+| `NEXUS_COMMIT_LLM_MODEL`        | 使用するモデル名                                                        | `qwen2.5-coder:7b`          |
+| `NEXUS_COMMIT_LLM_API_KEY`      | LLM API キー                                                            | `ollama`                    |
+| `NEXUS_COMMIT_LANG`             | 出力言語 (`ja` または `en`)                                             | `ja`                        |
+| `NEXUS_COMMIT_MAX_TOKENS`       | プロンプトの最大トークン数 (`cl100k_base` 基準, 安全マージン 0.85 適用) | `8192`                      |
+| `NEXUS_COMMIT_NEXUS_TIMEOUT_MS` | Nexus 通信のタイムアウト (ms)                                           | `5000`                      |
+| `NEXUS_COMMIT_LLM_TIMEOUT_MS`   | LLM 通信のタイムアウト (ms)                                             | `60000`                     |
 
 ### DevContainer
 
@@ -70,6 +70,7 @@ curl $NEXUS_COMMIT_LLM_URL/models
 ### CLI オプション
 
 <!-- CLI_OPTIONS_START -->
+
 ```bash
 Usage: nxc [options]
 
@@ -80,6 +81,7 @@ Options:
   --staged       Target staged diff (default)
   --unstaged     Target unstaged diff
   --all          Target both staged + unstaged
+  --doctor       Run doctor mode checks
   --lang <ja|en> Output language (default: ja)
   --model <name> Override LLM model name
   --dry-run      Print message to stdout without committing
@@ -87,6 +89,7 @@ Options:
   -h, --help     Show this help
   -v, --version  Show version
 ```
+
 <!-- CLI_OPTIONS_END -->
 
 ## 仕様

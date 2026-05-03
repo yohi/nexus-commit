@@ -80,3 +80,15 @@ export class NodeGitClient implements GitClient {
     await runGit(['commit', '-m', message]);
   }
 }
+
+export class NoopGitClient implements GitClient {
+  async isRepo(): Promise<boolean> {
+    throw new Error('isRepo: Git operation is disabled');
+  }
+  async getDiff(_mode: DiffMode): Promise<DiffResult> {
+    throw new Error('getDiff: Git operation is disabled');
+  }
+  async commit(_message: string): Promise<void> {
+    throw new Error('commit: Git operation is disabled');
+  }
+}

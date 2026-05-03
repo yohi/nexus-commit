@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { loadConfig } from '../src/config.js';
 import type { Flags } from '../src/flags.js';
 
@@ -19,7 +19,7 @@ describe('loadConfig', () => {
     expect(cfg.llmModel).toBe('qwen2.5-coder:7b');
     expect(cfg.llmApiKey).toBe('ollama');
     expect(cfg.lang).toBe('ja');
-    expect(cfg.maxChars).toBe(24000);
+    expect(cfg.maxTokens).toBe(8192);
     expect(cfg.nexusTimeoutMs).toBe(5000);
     expect(cfg.llmTimeoutMs).toBe(60000);
     expect(cfg.diffMode).toBe('staged');
@@ -35,7 +35,7 @@ describe('loadConfig', () => {
         NEXUS_COMMIT_LLM_MODEL: 'llama3:8b',
         NEXUS_COMMIT_LLM_API_KEY: 'secret',
         NEXUS_COMMIT_LANG: 'en',
-        NEXUS_COMMIT_MAX_CHARS: '32000',
+        NEXUS_COMMIT_MAX_TOKENS: '6400',
         NEXUS_COMMIT_NEXUS_TIMEOUT_MS: '3000',
         NEXUS_COMMIT_LLM_TIMEOUT_MS: '90000',
       },
@@ -46,7 +46,7 @@ describe('loadConfig', () => {
     expect(cfg.llmModel).toBe('llama3:8b');
     expect(cfg.llmApiKey).toBe('secret');
     expect(cfg.lang).toBe('en');
-    expect(cfg.maxChars).toBe(32000);
+    expect(cfg.maxTokens).toBe(6400);
     expect(cfg.nexusTimeoutMs).toBe(3000);
     expect(cfg.llmTimeoutMs).toBe(90000);
   });
@@ -64,21 +64,21 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ NEXUS_COMMIT_LANG: 'fr' }, baseFlags)).toThrow(/Invalid lang/);
   });
 
-  it('throws on non-numeric maxChars', () => {
-    expect(() => loadConfig({ NEXUS_COMMIT_MAX_CHARS: 'abc' }, baseFlags)).toThrow(
-      /Invalid maxChars/,
+  it('throws on non-numeric maxTokens', () => {
+    expect(() => loadConfig({ NEXUS_COMMIT_MAX_TOKENS: 'abc' }, baseFlags)).toThrow(
+      /Invalid maxTokens/,
     );
-    expect(() => loadConfig({ NEXUS_COMMIT_MAX_CHARS: '3000ms' }, baseFlags)).toThrow(
-      /Invalid maxChars/,
+    expect(() => loadConfig({ NEXUS_COMMIT_MAX_TOKENS: '3000ms' }, baseFlags)).toThrow(
+      /Invalid maxTokens/,
     );
-    expect(() => loadConfig({ NEXUS_COMMIT_MAX_CHARS: '1.5' }, baseFlags)).toThrow(
-      /Invalid maxChars/,
+    expect(() => loadConfig({ NEXUS_COMMIT_MAX_TOKENS: '1.5' }, baseFlags)).toThrow(
+      /Invalid maxTokens/,
     );
   });
 
-  it('throws on zero maxChars', () => {
-    expect(() => loadConfig({ NEXUS_COMMIT_MAX_CHARS: '0' }, baseFlags)).toThrow(
-      /Invalid maxChars/,
+  it('throws on zero maxTokens', () => {
+    expect(() => loadConfig({ NEXUS_COMMIT_MAX_TOKENS: '0' }, baseFlags)).toThrow(
+      /Invalid maxTokens/,
     );
   });
 
@@ -96,15 +96,15 @@ describe('loadConfig', () => {
 
   it('throws on unsafe integer', () => {
     const tooLarge = (Number.MAX_SAFE_INTEGER + 1).toString();
-    expect(() => loadConfig({ NEXUS_COMMIT_MAX_CHARS: tooLarge }, baseFlags)).toThrow(
-      /Invalid maxChars/,
+    expect(() => loadConfig({ NEXUS_COMMIT_MAX_TOKENS: tooLarge }, baseFlags)).toThrow(
+      /Invalid maxTokens/,
     );
   });
 
   it('accepts MAX_SAFE_INTEGER', () => {
     const maxSafe = Number.MAX_SAFE_INTEGER.toString();
-    const cfg = loadConfig({ NEXUS_COMMIT_MAX_CHARS: maxSafe }, baseFlags);
-    expect(cfg.maxChars).toBe(Number.MAX_SAFE_INTEGER);
+    const cfg = loadConfig({ NEXUS_COMMIT_MAX_TOKENS: maxSafe }, baseFlags);
+    expect(cfg.maxTokens).toBe(Number.MAX_SAFE_INTEGER);
   });
 
   it('--no-context propagates to useContext:false', () => {
@@ -115,5 +115,21 @@ describe('loadConfig', () => {
   it('diffMode flag propagates', () => {
     const cfg = loadConfig({}, { ...baseFlags, diffMode: 'all' });
     expect(cfg.diffMode).toBe('all');
+  });
+
+  it('NEXUS_COMMIT_MAX_CHARS が設定されている場合 stderr に廃止警告を出力する', () => {
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    loadConfig({ NEXUS_COMMIT_MAX_CHARS: '24000' }, baseFlags);
+    expect(stderrSpy).toHaveBeenCalledWith(
+      expect.stringContaining('NEXUS_COMMIT_MAX_CHARS は廃止されました'),
+    );
+    stderrSpy.mockRestore();
+  });
+
+  it('NEXUS_COMMIT_MAX_CHARS が未設定なら廃止警告を出力しない', () => {
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    loadConfig({}, baseFlags);
+    expect(stderrSpy).not.toHaveBeenCalledWith(expect.stringContaining('NEXUS_COMMIT_MAX_CHARS'));
+    stderrSpy.mockRestore();
   });
 });
