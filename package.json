@@ -1,6 +1,6 @@
 {
   "name": "@yohi/nexus-commit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI-powered Conventional Commits generator using local LLM and Nexus index",
   "type": "module",
   "engines": {

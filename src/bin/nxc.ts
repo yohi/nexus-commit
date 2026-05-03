@@ -48,9 +48,7 @@ function createDeps(
   options: { skipGit?: boolean } = {},
 ): Deps {
   return {
-    git: options.skipGit
-      ? (null as unknown as GitClient)
-      : (overrides?.git ?? new NodeGitClient()),
+    git: options.skipGit ? (null as unknown as GitClient) : (overrides?.git ?? new NodeGitClient()),
     nexus: overrides?.nexus ?? new HttpNexusClient(config.nexusUrl),
     llm: overrides?.llm ?? new OpenAICompatibleLlmClient(config.llmUrl, config.llmApiKey),
   };
@@ -81,7 +79,7 @@ async function generate(
   const truncated = buildTruncated({
     diff,
     contexts,
-    maxChars: config.maxChars,
+    maxTokens: config.maxTokens,
   });
 
   const { system, user } = buildPrompt({

@@ -9,7 +9,7 @@ export interface Config {
   llmModel: string;
   llmApiKey: string;
   lang: Lang;
-  maxChars: number;
+  maxTokens: number;
   nexusTimeoutMs: number;
   llmTimeoutMs: number;
   diffMode: DiffMode;

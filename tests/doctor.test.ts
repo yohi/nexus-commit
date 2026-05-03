@@ -9,7 +9,7 @@ describe('runDoctor', () => {
     llmModel: 'test-model',
     llmApiKey: 'key',
     lang: 'ja',
-    maxChars: 1000,
+    maxTokens: 1000,
     nexusTimeoutMs: 1000,
     llmTimeoutMs: 1000,
     diffMode: 'staged',
