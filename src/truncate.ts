@@ -35,56 +35,52 @@ function splitDiffBlocks(diff: string): string[] {
   return blocks;
 }
 
-function truncateDiffByTokens(diff: string, budget: number): string {
+function truncateDiffByTokens(diff: string, budget: number): { truncated: string; used: number } {
   if (budget <= 0) {
-    return '';
+    return { truncated: '', used: 0 };
   }
-  if (countTokens(diff) <= budget) {
-    return diff;
+  const fullTokens = countTokens(diff);
+  if (fullTokens <= budget) {
+    return { truncated: diff, used: fullTokens };
   }
 
   const blocks = splitDiffBlocks(diff);
   if (blocks.length === 0) {
-    return '';
+    return { truncated: '', used: 0 };
   }
 
-  const blockTokens = blocks.map((b) => countTokens(b));
-  // join('\n') adds (blocks.length - 1) newlines.
-  // Each newline is 1 token.
-  let total = blockTokens.reduce((s, t) => s + t, 0) + Math.max(0, blocks.length - 1);
-
-  while (blocks.length > 1 && total > budget) {
-    const lastTokens = blockTokens.pop();
-    blocks.pop();
-    if (lastTokens !== undefined) {
-      // Subtract the tokens of the block and the newline that was before it.
-      total -= lastTokens + 1;
-    }
-  }
-
+  // Initial estimate
   let joined = blocks.join('\n');
-  if (total <= budget) {
-    return joined;
+  let currentTokens = countTokens(joined);
+
+  while (blocks.length > 1 && currentTokens > budget) {
+    blocks.pop();
+    joined = blocks.join('\n');
+    currentTokens = countTokens(joined);
+  }
+
+  if (currentTokens <= budget) {
+    return { truncated: joined, used: currentTokens };
   }
 
   const last = blocks[blocks.length - 1];
   if (last === undefined) {
-    return '';
+    return { truncated: '', used: 0 };
   }
   const newlineIdx = last.indexOf('\n');
   const header = newlineIdx === -1 ? last : last.slice(0, newlineIdx + 1);
   const body = newlineIdx === -1 ? '' : last.slice(newlineIdx + 1);
 
   const headerTokens = countTokens(header);
+  let finalResult: string;
   if (headerTokens >= budget) {
-    blocks[blocks.length - 1] = truncateToTokens(header, budget);
+    finalResult = truncateToTokens(header, budget);
   } else {
     const remainingBudget = budget - headerTokens;
     const truncatedBody = truncateToTokens(body, remainingBudget);
-    blocks[blocks.length - 1] = header + truncatedBody;
+    finalResult = header + truncatedBody;
   }
-  joined = blocks.join('\n');
-  return joined;
+  return { truncated: finalResult, used: countTokens(finalResult) };
 }
 
 function truncateContextsByTokens(contexts: NexusResult[], budget: number): NexusResult[] {
@@ -141,8 +137,11 @@ export function build({ diff, contexts, maxTokens }: TruncateInput): TruncateOut
     contextBudget = budget - diffBudget;
   }
 
+  const truncatedDiff = truncateDiffByTokens(diff, diffBudget);
+  const leftover = diffBudget - truncatedDiff.used;
+
   return {
-    diff: truncateDiffByTokens(diff, diffBudget),
-    contexts: truncateContextsByTokens(contexts, contextBudget),
+    diff: truncatedDiff.truncated,
+    contexts: truncateContextsByTokens(contexts, contextBudget + Math.max(0, leftover)),
   };
 }
