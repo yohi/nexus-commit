@@ -4,7 +4,7 @@ import * as clack from '@clack/prompts';
 import { parseFlags, type Flags } from '../flags.js';
 import { loadConfig } from '../config.js';
 import { logger } from '../logger.js';
-import { NodeGitClient } from '../git.js';
+import { NodeGitClient, NoopGitClient } from '../git.js';
 import { HttpNexusClient } from '../nexus-client.js';
 import { OpenAICompatibleLlmClient } from '../llm.js';
 import { extract as extractKeywords } from '../keywords.js';
@@ -48,7 +48,9 @@ function createDeps(
   options: { skipGit?: boolean } = {},
 ): Deps {
   return {
-    git: options.skipGit ? (null as unknown as GitClient) : (overrides?.git ?? new NodeGitClient()),
+    git: options.skipGit
+      ? (overrides?.git ?? new NoopGitClient())
+      : (overrides?.git ?? new NodeGitClient()),
     nexus: overrides?.nexus ?? new HttpNexusClient(config.nexusUrl),
     llm: overrides?.llm ?? new OpenAICompatibleLlmClient(config.llmUrl, config.llmApiKey),
   };

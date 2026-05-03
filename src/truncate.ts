@@ -77,7 +77,7 @@ function truncateDiffByTokens(diff: string, budget: number): string {
 
   const headerTokens = countTokens(header);
   if (headerTokens >= budget) {
-    blocks[blocks.length - 1] = header;
+    blocks[blocks.length - 1] = truncateToTokens(header, budget);
   } else {
     const remainingBudget = budget - headerTokens;
     const truncatedBody = truncateToTokens(body, remainingBudget);

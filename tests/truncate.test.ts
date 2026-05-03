@@ -81,4 +81,12 @@ describe('truncate.build (token-aware)', () => {
     const out = build({ diff: 'abc', contexts: [], maxTokens: 100 });
     expect(out.contexts).toEqual([]);
   });
+
+  it('ヘッダー自体が予算を超える場合にヘッダーを切り詰める', () => {
+    const budget = effectiveBudget(20); // budget = 17
+    const longHeader = 'diff --git a/' + 'x'.repeat(50) + ' b/' + 'x'.repeat(50);
+    const out = build({ diff: longHeader, contexts: [], maxTokens: 20 });
+    expect(countTokens(out.diff)).toBeLessThanOrEqual(budget);
+    expect(out.diff.length).toBeGreaterThan(0);
+  });
 });
