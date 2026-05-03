@@ -34,7 +34,7 @@ describe('loadPromptFile', () => {
 
   it('git ルート内でファイル不在なら path は候補、content は null', async () => {
     const out = await loadPromptFile(tmpRoot);
-    expect(out.path).toMatch(/\.github\/nxc\.prompt\.md$/);
+    expect(out.path?.endsWith(join('.github', 'nxc.prompt.md'))).toBe(true);
     expect(out.content).toBeNull();
   });
 
@@ -43,6 +43,15 @@ describe('loadPromptFile', () => {
     writeFileSync(join(tmpRoot, '.github', 'nxc.prompt.md'), '## JIRA\n- prefix');
     const out = await loadPromptFile(tmpRoot);
     expect(out.content).toBe('## JIRA\n- prefix');
+  });
+
+  it('ファイルが空の場合は content は null を返す', async () => {
+    mkdirSync(join(tmpRoot, '.github'), { recursive: true });
+    const candidate = join(tmpRoot, '.github', 'nxc.prompt.md');
+    writeFileSync(candidate, '');
+    const out = await loadPromptFile(tmpRoot);
+    expect(out.path).toBe(candidate);
+    expect(out.content).toBeNull();
   });
 
   it('git サブディレクトリから呼んでもルートを基準に解決する', async () => {
@@ -63,7 +72,37 @@ describe('findPromptFile', () => {
       mkdirSync(join(tmpRoot, '.github'), { recursive: true });
       writeFileSync(join(tmpRoot, '.github', 'nxc.prompt.md'), 'x');
       const path = await findPromptFile(tmpRoot);
-      expect(path).toMatch(/\.github\/nxc\.prompt\.md$/);
+      expect(path?.endsWith(join('.github', 'nxc.prompt.md'))).toBe(true);
+    } finally {
+      rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('ファイルが空なら null を返す', async () => {
+    const tmpRoot = makeGitRepo();
+    try {
+      mkdirSync(join(tmpRoot, '.github'), { recursive: true });
+      writeFileSync(join(tmpRoot, '.github', 'nxc.prompt.md'), '');
+      expect(await findPromptFile(tmpRoot)).toBeNull();
+    } finally {
+      rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
+    'アクセス権限エラーなどの致命的なエラーは伝播する',
+    async () => {
+    const { chmodSync } = await import('node:fs');
+    const tmpRoot = makeGitRepo();
+    try {
+      const dotGithub = join(tmpRoot, '.github');
+      mkdirSync(dotGithub, { recursive: true });
+      const promptPath = join(dotGithub, 'nxc.prompt.md');
+      writeFileSync(promptPath, 'secrets');
+      // 読み取り権限を剥奪
+      chmodSync(promptPath, 0o000);
+      
+      await expect(findPromptFile(tmpRoot)).rejects.toThrow();
     } finally {
       rmSync(tmpRoot, { recursive: true, force: true });
     }

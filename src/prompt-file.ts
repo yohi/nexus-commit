@@ -22,16 +22,17 @@ export interface PromptFileLookupResult {
 
 export async function loadPromptFile(
   cwd: string = process.cwd(),
+  root?: string,
 ): Promise<PromptFileLookupResult> {
-  const root = await findGitRoot(cwd);
-  if (root === null) {
+  const gitRoot = root ?? (await findGitRoot(cwd));
+  if (gitRoot === null) {
     return { path: null, content: null };
   }
 
-  const candidate = join(root, '.github', 'nxc.prompt.md');
+  const candidate = join(gitRoot, '.github', 'nxc.prompt.md');
   try {
     const content = await readFile(candidate, 'utf8');
-    return { path: candidate, content };
+    return { path: candidate, content: content.length > 0 ? content : null };
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
       return { path: candidate, content: null };
@@ -41,6 +42,11 @@ export async function loadPromptFile(
 }
 
 export async function findPromptFile(cwd: string = process.cwd()): Promise<string | null> {
-  const result = await loadPromptFile(cwd);
+  const root = await findGitRoot(cwd);
+  if (root === null) {
+    return null;
+  }
+
+  const result = await loadPromptFile(cwd, root);
   return result.content !== null ? result.path : null;
 }
