@@ -12,6 +12,10 @@
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yohi/nexus-commit.git"
+  },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
