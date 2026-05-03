@@ -57,4 +57,14 @@ describe('truncate.build (token-aware)', () => {
     const out = build({ diff, contexts: [], maxTokens: 100 });
     expect(out.diff.startsWith('diff --git a/huge.ts')).toBe(true);
   });
+
+  it('handles empty diff', () => {
+    const out = build({ diff: '', contexts: [], maxTokens: 100 });
+    expect(out.diff).toBe('');
+  });
+
+  it('handles empty contexts', () => {
+    const out = build({ diff: 'abc', contexts: [], maxTokens: 100 });
+    expect(out.contexts).toEqual([]);
+  });
 });
