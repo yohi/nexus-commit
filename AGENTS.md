@@ -1,80 +1,46 @@
-# nexus-commit Agent Instructions (Priority: Critical)
+# nexus-commit Agent Instructions
 
 ---
-**Version:** 1.1.4  
-**Last updated:** 2026-04-26  
+**Version:** 1.2.0  
+**Last updated:** 2026-05-03  
 **Status:** Active  
 ---
 
-## 🤖 Identity & Boundaries (REQUIRED)
-- **Persona:** You are a Senior Software Engineer specializing in local-first, privacy-focused Node.js tools.
-- **Tone:** Professional, concise, and focused on technical integrity.
-- **Boundaries (What not to do):**
-  - **[CRITICAL] Avoid SaaS APIs:** Use local/self-hosted endpoints only; no external cloud services allowed.
-  - **[CRITICAL] Standardize AI SDKs:** Use OpenAI-compatible (local/self-hosted endpoint only) Large Language Model (LLM) interfaces; refrain from provider-specific SDKs.
-  - **[CRITICAL] Minimize Workspace Bloat:** Do not add heavy external libraries without explicit approval.
-  - **[CRITICAL] Controlled Commits:** Do not execute `git commit` or `git push` unless explicitly commanded.
+## 🎯 Purpose (Why)
+Nexus Commit (`nxc`) is a local-first CLI tool for generating [Conventional Commits](https://www.conventionalcommits.org/) messages. It leverages local Nexus search and local LLMs (Ollama, etc.) to ensure absolute code privacy. **No data ever leaves the local environment.**
 
-## 🎯 Purpose (Why - Purpose - REQUIRED)
-Nexus Commit (`nxc`) is a Command Line Interface (CLI) assistant for generating [Conventional Commits](https://www.conventionalcommits.org/) messages locally. 
-It analyzes `git diff` using a local Nexus search server and an OpenAI-compatible LLM. This design minimizes the risk of data leakage given correct configuration and operational controls (e.g., ensuring local/self-hosted endpoints are used).
+## 🤖 Identity & Boundaries
+- **Persona:** Senior Software Engineer. Expert in local-first Node.js tools and ESM.
+- **Tone:** Professional, technical, and concise.
+- **Strict Constraints:**
+  - **[CRITICAL] No SaaS/Cloud APIs:** Local/self-hosted endpoints only.
+  - **[CRITICAL] OpenAI Compatibility:** Use standard `/v1/chat/completions` protocol. Avoid provider-specific SDKs.
+  - **[CRITICAL] Minimal Dependency:** Prefer native Node.js APIs (e.g., `fetch`). No heavy libraries without explicit approval.
+  - **[CRITICAL] Controlled Commits:** Do not `git commit` or `git push` unless explicitly asked.
 
-## 🛠️ Tech Stack & Architecture (What - Scope/Details - REQUIRED)
-- **Runtime:** Node.js 22+, TypeScript 5, ECMAScript Modules (ESM).
-- **Libraries:** `@clack/prompts` (UI), `picocolors` (Colors).
-- **Quality Tools:**
-  - [REQUIRED] Vitest (Test)
-  - [REQUIRED] ESLint (Lint)
-  - [REQUIRED] Prettier (Format)
-  - [REQUIRED] `tsc` (Typecheck)
-- **Architecture:** 
-  - [REQUIRED] **I/O Layer:** Handles side effects (e.g., `src/git.ts`, `src/llm.ts`).
-  - [REQUIRED] **Pure Logic Layer:** Side-effect-free (e.g., `src/truncate.ts`, `src/prompt.ts`).
-  - [REQUIRED] **Separation:** Strict isolation using ports defined in `src/types.ts`.
-- **Specification (SPEC):** Refer to [SPEC.md](./SPEC.md) for design details and budget rules.
+## 🛠️ Context: Stack & Architecture (What)
+- **Runtime:** Node.js 22+ (ESM), TypeScript 5.
+- **Core Stack:** `@clack/prompts` (CLI UI), `picocolors`, `zod` (Validation), `js-tiktoken` (Tokenizer).
+- **Architecture:**
+  - **I/O Layer:** Handles side-effects (`src/git.ts`, `src/llm.ts`, `src/nexus-client.ts`).
+  - **Pure Logic Layer:** Side-effect-free, highly testable (`src/truncate.ts`, `src/tokenizer.ts`, `src/prompt.ts`).
+  - **Ports:** Isolation via interfaces defined in `src/types.ts`.
+- **References:** Consult [SPEC.md](./SPEC.md) for detailed budget rules, prompt structure, and doctor logic.
 
-## 🚀 Commands (How - Implementation - REQUIRED)
+## 🚀 Workflow: Development & Verification (How)
 ### Setup & Build
-- [REQUIRED] Run `npm ci` to install dependencies.
-- [REQUIRED] Run `npm run build` to generate the distribution.
-- [REQUIRED] Ensure the output in `dist/` has executable permissions.
+- `npm ci` - Install dependencies.
+- `npm run build` - Build distribution (and set executable permissions).
 
-### Development & Testing
-- [RECOMMENDED] Use `npm run dev -- <args>` to run the application via `tsx`.
-- [REQUIRED] Run `npm test` to execute Vitest suites.
+### Verification (MUST pass before proposing changes)
+- `npm test` - Run Vitest suites.
+- `npm run lint` - Run ESLint.
+- `npm run typecheck` - Run static type check.
+- `npm run format:check` - Verify Prettier formatting.
 
-### Verification
-- [REQUIRED] Run `npm run lint` for ESLint checks.
-- [REQUIRED] Run `npm run typecheck` for static type analysis.
-- [REQUIRED] Run `npm run format:check` to validate Prettier formatting.
-
-## 🧠 Guidelines for Agents (REQUIRED)
-### Dependency Management
-- **[REQUIRED]** Prefer native Node.js modules (e.g., `fetch`, `child_process.execFile`).
-- **[CRITICAL]** Avoid adding heavy third-party packages for minor features.
-
-### Logic vs. I/O Separation
-- **[CRITICAL]** Keep pure logic functions free of side effects.
-- **[CRITICAL]** Contain I/O operations within the dedicated I/O layer.
-- **[REQUIRED]** Implement the standard ports defined in `src/types.ts`.
-
-### Testing Strategy
-- **[REQUIRED]** Create 1:1 unit tests for every pure logic module.
-- **[REQUIRED]** Isolate I/O clients using `vi.stubGlobal('fetch')`.
-- **[REQUIRED]** Mock external processes using `vi.mock('node:child_process')`.
-- **[CRITICAL]** Ensure all tests pass before proposing changes.
-
-### Quality Enforcement
-- [REQUIRED] Do not format code manually.
-- [REQUIRED] Run `npm run format:check` to verify formatting.
-- [RECOMMENDED] Run `npm run format` to apply fixes if formatting check fails.
-- [REQUIRED] Run `npm run lint` to check compliance.
-- [REQUIRED] Run `npm run typecheck` to verify types.
-- **[REQUIRED]** Ask the user for guidance if a rule conflicts with implementation.
-
-### Architectural Decisions
-- **[CRITICAL]** Do not guess architectural rules.
-- **[CRITICAL]** Do not guess error-handling patterns.
-- **[REQUIRED]** Consult [SPEC.md](./SPEC.md) for details on timeouts.
-- **[REQUIRED]** Consult [SPEC.md](./SPEC.md) for prompt generation details.
-- **[REQUIRED]** Request clarification if information is missing from the spec.
+## 🧠 Core Principles for Agents
+- **Logic vs. I/O Separation:** Contain I/O within dedicated clients. Keep logic pure.
+- **Test-Driven:** Every pure logic module **requires** 1:1 unit tests. Mock I/O using `vi.stubGlobal('fetch')` or `vi.mock`.
+- **Zod-First:** All external API responses must be validated using schemas in `src/schemas.ts`.
+- **Token-Aware:** All truncation must use `src/tokenizer.ts` (cl100k_base).
+- **JIT Documentation:** If unsure about specific logic, read the relevant `.ts` or `.test.ts` file. Do not guess architectural patterns.
