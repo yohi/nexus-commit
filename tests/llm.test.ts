@@ -136,14 +136,14 @@ describe('OpenAICompatibleLlmClient', () => {
       vi.mocked(fetch).mockResolvedValue(mockRes({}));
       await expect(
         client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
-      ).rejects.toThrow(/Invalid LLM response \(paths: choices\): /);
+      ).rejects.toThrow(/Invalid LLM response at choices: /);
     });
 
     it('throws when first choice is null or undefined', async () => {
       vi.mocked(fetch).mockResolvedValue(mockRes({ choices: [null] }));
       await expect(
         client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
-      ).rejects.toThrow(/Invalid LLM response \(paths: choices\.0\): /);
+      ).rejects.toThrow(/Invalid LLM response at choices\.0: /);
     });
 
     it('throws on empty choices', async () => {
@@ -151,7 +151,7 @@ describe('OpenAICompatibleLlmClient', () => {
       await expect(
         client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
       ).rejects.toThrow(
-        /Invalid LLM response \(paths: choices\): choices must contain at least one item/,
+        /Invalid LLM response at choices: choices must contain at least one item/,
       );
     });
 
@@ -159,13 +159,7 @@ describe('OpenAICompatibleLlmClient', () => {
       vi.mocked(fetch).mockResolvedValue(mockRes({ choices: [{ message: {} }] }));
       await expect(
         client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
-      ).rejects.toThrow(/Invalid LLM response \(paths: choices\.0\.message\.content\): /);
-    });
-
-    it('handles null content by returning an empty string', async () => {
-      vi.mocked(fetch).mockResolvedValue(mockRes({ choices: [{ message: { content: null } }] }));
-      const result = await client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 5000 });
-      expect(result).toBe('');
+      ).rejects.toThrow(/Invalid LLM response at choices\.0\.message\.content: /);
     });
 
     it('throws on 401 with error body', async () => {

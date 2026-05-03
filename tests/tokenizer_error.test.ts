@@ -34,14 +34,14 @@ describe('tokenizer error handling fallback', () => {
     expect(countTokens(emoji)).toBe(Buffer.byteLength(emoji, 'utf8'));
   });
 
-  it('truncateToTokens: encode が失敗した際に空文字を返す (Fail Closed)', () => {
-    expect(truncateToTokens('FAIL_ENCODE', 5)).toBe('');
+  it('truncateToTokens: encode が失敗した際に文字数ベースでフォールバックした文字列を返す (Fail Open)', () => {
+    expect(truncateToTokens('FAIL_ENCODE', 2)).toBe('FAIL_ENC'); // 2 * 4 = 8 chars
   });
 
-  it('truncateToTokens: encode は成功するが decode が失敗した際に空文字を返す (Fail Closed)', () => {
+  it('truncateToTokens: encode は成功するが decode が失敗した際に文字数ベースでフォールバックした文字列を返す (Fail Open)', () => {
     // budget をトークン数より小さくして decode を呼ばせる
     // tokens.length は 5, budget は 3
     // slice(0, 3) は [1, 2, 3] になり、decode が失敗する設定
-    expect(truncateToTokens('SUCCESS_ENCODE_BUT_FAIL_DECODE', 3)).toBe('');
+    expect(truncateToTokens('SUCCESS_ENCODE_BUT_FAIL_DECODE', 3)).toBe('SUCCESS_ENCO'); // 3 * 4 = 12 chars
   });
 });

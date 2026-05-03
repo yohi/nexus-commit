@@ -92,7 +92,13 @@ export async function runDoctor(config: Config, deps: DoctorDeps): Promise<Docto
   }
 
   // 5. Model existence
-  if (llmReachable) {
+  if (!llmReachable) {
+    results.push({
+      title: `Model '${config.llmModel}' found`,
+      status: 'skip',
+      detail: 'LLM endpoint check failed',
+    });
+  } else {
     const found = models.includes(config.llmModel);
     results.push({
       title: `Model '${config.llmModel}' found`,

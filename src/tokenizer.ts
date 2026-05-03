@@ -25,7 +25,6 @@ export function countTokens(text: string): number {
   try {
     return getEncoder().encode(text).length;
   } catch {
-    // 保守的な上限見積もりとして UTF-8 バイト長を返す
     return Buffer.byteLength(text, 'utf8');
   }
 }
@@ -37,7 +36,7 @@ export function countTokens(text: string): number {
  *
  * @param text 切り詰め対象の文字列
  * @param budget トークン予算
- * @returns 切り詰められた文字列。失敗した場合は空文字を返します（Fail Closed）。
+ * @returns 切り詰められた文字列。失敗した場合は文字数ベースでフォールバックします。
  */
 export function truncateToTokens(text: string, budget: number): string {
   if (budget <= 0 || text.length === 0) {
@@ -51,7 +50,8 @@ export function truncateToTokens(text: string, budget: number): string {
     }
     return encoder.decode(tokens.slice(0, budget));
   } catch {
-    return '';
+    const charBudget = budget * 4;
+    return text.length <= charBudget ? text : text.slice(0, charBudget);
   }
 }
 
