@@ -89,7 +89,7 @@ describe('findPromptFile', () => {
     }
   });
 
-  it.skipIf(process.platform !== 'win32' && process.getuid?.() === 0)(
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
     'アクセス権限エラーなどの致命的なエラーは伝播する',
     async () => {
     const { chmodSync } = await import('node:fs');
