@@ -77,14 +77,18 @@ export async function safeJsonFetch(
         throw new Error(`${errorContext} timed out after ${timeoutMs}ms`);
       }
       const msg = err instanceof Error ? err.message : String(err);
-      throw new Error(`${errorContext} request to ${url.toString()} failed: ${msg}`, { cause: err });
+      throw new Error(`${errorContext} request to ${url.toString()} failed: ${msg}`, {
+        cause: err,
+      });
     }
 
     if (!response.ok) {
       const MAX_SNIPPET = 200;
       const contentLength = response.headers.get('content-length');
       if (contentLength && parseInt(contentLength, 10) > 1024 * 1024 * 5) {
-        throw new Error(`${errorContext} error: ${response.status} ${response.statusText}\nBody snippet: [Body too large to read safely]`);
+        throw new Error(
+          `${errorContext} error: ${response.status} ${response.statusText}\nBody snippet: [Body too large to read safely]`,
+        );
       }
 
       let snippet = '';
@@ -105,7 +109,8 @@ export async function safeJsonFetch(
           reader.cancel().catch(() => {});
         } else {
           const text = await response.text();
-          snippet = text.length > MAX_SNIPPET ? `${text.slice(0, MAX_SNIPPET)}... [truncated]` : text;
+          snippet =
+            text.length > MAX_SNIPPET ? `${text.slice(0, MAX_SNIPPET)}... [truncated]` : text;
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
@@ -113,7 +118,9 @@ export async function safeJsonFetch(
         }
         snippet = '[Failed to read response body]';
       }
-      throw new Error(`${errorContext} error: ${response.status} ${response.statusText}\nBody snippet: ${snippet}`);
+      throw new Error(
+        `${errorContext} error: ${response.status} ${response.statusText}\nBody snippet: ${snippet}`,
+      );
     }
 
     const text = await response.text().catch((err) => {
@@ -122,7 +129,7 @@ export async function safeJsonFetch(
       }
       throw new Error(
         `${errorContext} failed to read response body from ${url.toString()}\nStatus: ${response.status} ${response.statusText}`,
-        { cause: err }
+        { cause: err },
       );
     });
 

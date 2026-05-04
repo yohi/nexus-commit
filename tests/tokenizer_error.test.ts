@@ -29,7 +29,7 @@ describe('tokenizer error handling fallback', () => {
   it('countTokens: encoder が失敗した際に UTF-8 バイト長を返す', () => {
     const text = 'FAIL_ENCODE';
     expect(countTokens(text)).toBe(Buffer.byteLength(text, 'utf8'));
-    
+
     const emoji = '😊FAIL_ENCODE';
     expect(countTokens(emoji)).toBe(Buffer.byteLength(emoji, 'utf8'));
   });

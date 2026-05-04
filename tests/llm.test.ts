@@ -41,7 +41,10 @@ describe('OpenAICompatibleLlmClient', () => {
       vi.mocked(fetch).mockResolvedValue(
         mockRes({ choices: [{ message: { content: 'feat: add X' } }] }),
       );
-      const out = await client.chat({ system: 's', user: 'u', model: 'qwen' }, { timeoutMs: 60000 });
+      const out = await client.chat(
+        { system: 's', user: 'u', model: 'qwen' },
+        { timeoutMs: 60000 },
+      );
       expect(out).toBe('feat: add X');
     });
 
@@ -80,7 +83,9 @@ describe('OpenAICompatibleLlmClient', () => {
       const clientSlash = new OpenAICompatibleLlmClient(`${baseUrl}/`, apiKey);
       await clientSlash.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 60000 });
       const call = vi.mocked(fetch).mock.calls[0];
-      expect((call as [string | URL, RequestInit])[0].toString()).toBe(`${baseUrl}/chat/completions`);
+      expect((call as [string | URL, RequestInit])[0].toString()).toBe(
+        `${baseUrl}/chat/completions`,
+      );
     });
 
     it('throws on unsupported protocol (SSRF mitigation)', async () => {
@@ -150,9 +155,7 @@ describe('OpenAICompatibleLlmClient', () => {
       vi.mocked(fetch).mockResolvedValue(mockRes({ choices: [] }));
       await expect(
         client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
-      ).rejects.toThrow(
-        /Invalid LLM response at choices: choices must contain at least one item/,
-      );
+      ).rejects.toThrow(/Invalid LLM response at choices: choices must contain at least one item/);
     });
 
     it('throws on invalid message shape', async () => {
@@ -168,7 +171,9 @@ describe('OpenAICompatibleLlmClient', () => {
       );
       await expect(
         client.chat({ system: 's', user: 'u', model: 'm' }, { timeoutMs: 1000 }),
-      ).rejects.toThrow(/LLM API request error: 401 Unauthorized\nBody snippet: {"error":"Unauthorized"}/);
+      ).rejects.toThrow(
+        /LLM API request error: 401 Unauthorized\nBody snippet: {"error":"Unauthorized"}/,
+      );
     });
 
     it('throws specific error on timeout', async () => {
