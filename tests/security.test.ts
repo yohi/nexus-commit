@@ -2,13 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { validateSafeUrl, safeJsonFetch } from '../src/security.js';
 
 describe('validateSafeUrl', () => {
-  it.each([
-    'http://localhost:11434',
-    'https://api.openai.com',
-    'http://192.168.1.1:8080',
-  ])('should allow valid http/https URL: %s', (url) => {
-    expect(() => validateSafeUrl(new URL(url))).not.toThrow();
-  });
+  it.each(['http://localhost:11434', 'https://api.openai.com', 'http://192.168.1.1:8080'])(
+    'should allow valid http/https URL: %s',
+    (url) => {
+      expect(() => validateSafeUrl(new URL(url))).not.toThrow();
+    },
+  );
 
   it.each([
     ['file:///etc/passwd', 'Unsupported protocol: file:'],
@@ -56,8 +55,9 @@ describe('safeJsonFetch', () => {
     });
 
     const url = new URL('https://example.com/api');
-    await expect(safeJsonFetch(url, {}, 50, 'Test context'))
-      .rejects.toThrow('Test context timed out after 50ms');
+    await expect(safeJsonFetch(url, {}, 50, 'Test context')).rejects.toThrow(
+      'Test context timed out after 50ms',
+    );
   });
 
   it('should timeout if the body read (text()) takes too long', async () => {
@@ -84,8 +84,9 @@ describe('safeJsonFetch', () => {
     });
 
     const url = new URL('https://example.com/api');
-    await expect(safeJsonFetch(url, {}, 100, 'Test context'))
-      .rejects.toThrow('Test context timed out after 100ms');
+    await expect(safeJsonFetch(url, {}, 100, 'Test context')).rejects.toThrow(
+      'Test context timed out after 100ms',
+    );
   });
 
   it('should succeed if everything happens within timeout', async () => {
@@ -103,8 +104,9 @@ describe('safeJsonFetch', () => {
     const url = new URL('https://example.com/api');
     const cases = [0, -1, NaN, Infinity];
     for (const timeoutMs of cases) {
-      await expect(safeJsonFetch(url, {}, timeoutMs, 'Test context'))
-        .rejects.toThrow(`Invalid timeoutMs: ${timeoutMs}. Must be a positive finite number.`);
+      await expect(safeJsonFetch(url, {}, timeoutMs, 'Test context')).rejects.toThrow(
+        `Invalid timeoutMs: ${timeoutMs}. Must be a positive finite number.`,
+      );
     }
   });
 
@@ -112,8 +114,9 @@ describe('safeJsonFetch', () => {
     vi.mocked(fetch).mockRejectedValue(new Error('Network failure'));
 
     const url = new URL('https://example.com/api');
-    await expect(safeJsonFetch(url, {}, 1000, 'Test context'))
-      .rejects.toThrow('Test context request to https://example.com/api failed: Network failure');
+    await expect(safeJsonFetch(url, {}, 1000, 'Test context')).rejects.toThrow(
+      'Test context request to https://example.com/api failed: Network failure',
+    );
   });
 
   it('should throw contextual error if response is not ok', async () => {
@@ -126,7 +129,8 @@ describe('safeJsonFetch', () => {
     } as Response);
 
     const url = new URL('https://example.com/api');
-    await expect(safeJsonFetch(url, {}, 1000, 'Test context'))
-      .rejects.toThrow(/Test context error: 404 Not Found/);
+    await expect(safeJsonFetch(url, {}, 1000, 'Test context')).rejects.toThrow(
+      /Test context error: 404 Not Found/,
+    );
   });
 });

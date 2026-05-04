@@ -27,9 +27,7 @@ describe('truncate.build (token-aware)', () => {
   });
 
   it('diff が空なら contexts に全予算を割り当てる', () => {
-    const contexts: NexusResult[] = [
-      { file: 'a.ts', content: 'x '.repeat(80) },
-    ];
+    const contexts: NexusResult[] = [{ file: 'a.ts', content: 'x '.repeat(80) }];
     // budget = 200 * 0.85 = 170
     // 以前の制限 (0.4 * 170 = 68) なら削除されていたはず
     const out = build({ diff: '', contexts, maxTokens: 200 });

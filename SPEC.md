@@ -84,7 +84,7 @@ diff のハンクから識別子っぽいトークンを正規表現で抽出し
 
 ### 2.9 Config 型の破壊的変更: maxTokens
 
-`Config.maxChars` を削除し `Config.maxTokens` を追加。環境変数も `NEXUS_COMMIT_MAX_CHARS` → `NEXUS_COMMIT_MAX_TOKENS` へ置換し、後方互換用エイリアスによる混乱を防止する。
+`Config.maxChars` を削除し `Config.maxTokens` を追加。環境変数も `NEXUS_COMMIT_MAX_CHARS` → `NEXUS_COMMIT_MAX_TOKENS` へ置換し、後方互換用エイリアスによる混乱を防止する。また、この破壊的変更に伴いパッケージバージョンを `1.0.0` へメジャーアップデートした。
 
 ---
 
@@ -366,6 +366,7 @@ content:
 | `llmClient.chat`     | 5xx / 不正レスポンス / Zod 検証失敗 | fatal、レスポンス概要出力              | 3    |
 | Ctrl+C               | `@clack/prompts.isCancel`           | クリーン終了、commit しない            | 0    |
 | 設定値不正           | 未サポート lang 等                  | 起動時バリデーションで fatal           | 2    |
+| `tokenizer.getEncoder`| 同期失敗（理論上ないが念のため） | `Buffer.byteLength(text, 'utf8')` を用いたバイト数でフォールバック | - |
 
 ### 8.2 タイムアウト実装パターン
 
@@ -600,4 +601,4 @@ nexus-commit/
 6. `npm run test` / `npm run typecheck` / `npm run lint` が全て成功する
 7. Ctrl+C でいつキャンセルしても commit が走らない
 8. `--doctor` フラグで API の状態・モデルの存在確認ができる
-9. `.github/nxc.prompt.md` がある場合、カスタムルールが適用される
+9. `.github/nxc.prompt.md` がある場合、カスタムルールが適用されるxc.prompt.md` がある場合、カスタムルールが適用される

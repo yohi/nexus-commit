@@ -45,10 +45,7 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
 
     const temperature = req.temperature ?? 0.2;
     const data = await safeJsonFetch(
-      new URL(
-        'chat/completions',
-        this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`,
-      ),
+      new URL('chat/completions', this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`),
       {
         method: 'POST',
         headers: {
@@ -74,10 +71,7 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
 
   async listModels(opts: { timeoutMs: number }): Promise<string[]> {
     const data = await safeJsonFetch(
-      new URL(
-        'models',
-        this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`,
-      ),
+      new URL('models', this.baseUrl.endsWith('/') ? this.baseUrl : `${this.baseUrl}/`),
       {
         method: 'GET',
         headers: {
@@ -91,4 +85,3 @@ export class OpenAICompatibleLlmClient implements LlmClientPort {
     return extractModelIds(data);
   }
 }
-

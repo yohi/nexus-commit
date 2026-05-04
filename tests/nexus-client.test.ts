@@ -102,7 +102,9 @@ describe('HttpNexusClient', () => {
 
       const client = new HttpNexusClient('http://localhost:8080');
       const searchPromise = client.search({ query: 'q', files: [] }, { timeoutMs: 10 });
-      const expectation = expect(searchPromise).rejects.toThrow('Nexus search timed out after 10ms');
+      const expectation = expect(searchPromise).rejects.toThrow(
+        'Nexus search timed out after 10ms',
+      );
 
       await vi.advanceTimersByTimeAsync(10);
 
