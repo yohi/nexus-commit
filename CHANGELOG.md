@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0](https://github.com/yohi/nexus-commit/compare/v1.0.0...v1.1.0) (2026-05-04)
+
+
+### Features
+
+* **config:** LLMモデル設定の追加と、トークン予算再分配ロジックのテスト強化 ([6285b54](https://github.com/yohi/nexus-commit/commit/6285b542757cacb1346141b53c9c6af6be1ee4e5))
+* **docs:** README を人間向けに改訂し、利用フローを具体化 ([3093417](https://github.com/yohi/nexus-commit/commit/3093417ee43b72fba1f6a79a76ae04cac4ec56d6))
+
+
+### Bug Fixes
+
+* **config:** デフォルトLLMモデルをqwen2.5-coder:1.5bに更新 ([a10c2a7](https://github.com/yohi/nexus-commit/commit/a10c2a73d79f61e1aa15080fb3bc9e63f30a613a))
+
 ## 1.0.0 (2026-05-03)
 
 
