@@ -601,4 +601,4 @@ nexus-commit/
 6. `npm run test` / `npm run typecheck` / `npm run lint` が全て成功する
 7. Ctrl+C でいつキャンセルしても commit が走らない
 8. `--doctor` フラグで API の状態・モデルの存在確認ができる
-9. `.github/nxc.prompt.md` がある場合、カスタムルールが適用されるxc.prompt.md` がある場合、カスタムルールが適用される
+9. `.github/nxc.prompt.md` がある場合、カスタムルールが適用される
