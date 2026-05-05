@@ -93,7 +93,7 @@ describe('safeJsonFetch', () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       text: () => Promise.resolve('{"status": "ok"}'),
-    } as Partial<Response> as Response);
+    } as unknown as Response);
 
     const url = new URL('https://example.com/api');
     const result = await safeJsonFetch(url, {}, 1000, 'Test context');
@@ -131,6 +131,129 @@ describe('safeJsonFetch', () => {
     const url = new URL('https://example.com/api');
     await expect(safeJsonFetch(url, {}, 1000, 'Test context')).rejects.toThrow(
       /Test context error: 404 Not Found/,
+    );
+  });
+
+  it('should throw error if content-length is too large', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      headers: new Headers({ 'content-length': '6000000' }), // 6MB
+    } as unknown as Response);
+
+    const url = new URL('https://example.com/api');
+    await expect(safeJsonFetch(url, {}, 1000, 'Test context')).rejects.toThrow(
+      '[Body too large to read safely]',
+    );
+  });
+
+  it('should truncate error snippet if body text is too long', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Error',
+      headers: new Headers(),
+      text: () => Promise.resolve('A'.repeat(300)),
+    } as unknown as Response);
+
+    const url = new URL('https://example.com/api');
+    await expect(safeJsonFetch(url, {}, 1000, 'Test context')).rejects.toThrow(
+      /Body snippet: A{200}\.\.\. \[truncated\]/,
+    );
+  });
+
+  it('should use reader to read body if response.body is present', async () => {
+    const readerMock = {
+      read: vi
+        .fn()
+        .mockResolvedValueOnce({ done: false, value: new TextEncoder().encode('Hello') })
+        .mockResolvedValueOnce({ done: true, value: undefined }),
+      cancel: vi.fn().mockResolvedValue(undefined),
+    };
+    const bodyMock = {
+      getReader: () => readerMock,
+    };
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      headers: new Headers(),
+      body: bodyMock,
+    } as unknown as Response);
+
+    const url = new URL('https://example.com/api');
+    await expect(safeJsonFetch(url, {}, 1000, 'Test context')).rejects.toThrow(
+      /Body snippet: Hello/,
+    );
+    expect(readerMock.cancel).toHaveBeenCalled();
+  });
+
+  it('should throw error on invalid JSON response', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('invalid json'),
+    } as unknown as Response);
+
+    const url = new URL('https://example.com/api');
+    await expect(safeJsonFetch(url, {}, 1000, 'Test context')).rejects.toThrow(
+      /failed to parse JSON response/,
+    );
+  });
+
+  it('should throw error if response.text() fails', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      text: () => Promise.reject(new Error('Read error')),
+    } as Partial<Response> as Response);
+
+    const url = new URL('https://example.com/api');
+    await expect(safeJsonFetch(url, {}, 1000, 'Test context')).rejects.toThrow(
+      /failed to read response body/,
+    );
+  });
+
+  it('should handle AbortError during response.text()', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      text: () => {
+        const error = new Error('Aborted');
+        error.name = 'AbortError';
+        return Promise.reject(error);
+      },
+    } as Partial<Response> as Response);
+
+    const url = new URL('https://example.com/api');
+    await expect(safeJsonFetch(url, {}, 1000, 'Test context')).rejects.toThrow(
+      'Test context timed out after 1000ms',
+    );
+  });
+
+  it('should handle AbortError during reader.read()', async () => {
+    const readerMock = {
+      read: vi.fn().mockImplementation(() => {
+        const error = new Error('Aborted');
+        error.name = 'AbortError';
+        return Promise.reject(error);
+      }),
+      cancel: vi.fn().mockResolvedValue(undefined),
+    };
+    const bodyMock = {
+      getReader: () => readerMock,
+    };
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      headers: new Headers(),
+      body: bodyMock,
+    } as unknown as Response);
+
+    const url = new URL('https://example.com/api');
+    await expect(safeJsonFetch(url, {}, 1000, 'Test context')).rejects.toThrow(
+      'Test context timed out after 1000ms',
     );
   });
 });

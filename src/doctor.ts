@@ -40,7 +40,7 @@ export async function runDoctor(config: Config, deps: DoctorDeps): Promise<Docto
   results.push({
     title: 'Configuration',
     status: 'ok',
-    detail: `llmUrl=${config.llmUrl}, model=${config.llmModel}, lang=${config.lang}, maxTokens=${config.maxTokens}, apiKey=***`,
+    detail: `nexusUrl=${config.nexusUrl}, llmUrl=${config.llmUrl}, model=${config.llmModel}, lang=${config.lang}, maxTokens=${config.maxTokens}, apiKey=***`,
   });
 
   // 3. Nexus API reachable

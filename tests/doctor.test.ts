@@ -91,4 +91,23 @@ describe('runDoctor', () => {
       vi.doUnmock('../src/prompt-file.js');
     }
   });
+
+  it('Custom prompt file 検索でエラーが発生した場合は warn', async () => {
+    vi.resetModules();
+    vi.doMock('../src/prompt-file.js', () => ({
+      findPromptFile: vi.fn(async () => {
+        throw new Error('FileSystem error');
+      }),
+      loadPromptFile: vi.fn(),
+    }));
+    try {
+      const { runDoctor: run } = await import('../src/doctor.js');
+      const report = await run(mockConfig, mockDeps);
+      const cp = report.results.find((x) => x.title === 'Custom prompt file');
+      expect(cp?.status).toBe('warn');
+      expect(cp?.detail).toBe('FileSystem error');
+    } finally {
+      vi.doUnmock('../src/prompt-file.js');
+    }
+  });
 });

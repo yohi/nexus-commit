@@ -9,6 +9,7 @@ const baseFlags: Flags = {
   help: false,
   version: false,
   doctor: false,
+  json: false,
 };
 
 describe('loadConfig', () => {

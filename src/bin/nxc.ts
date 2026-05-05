@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { fileURLToPath } from 'node:url';
 import * as clack from '@clack/prompts';
-import { parseFlags, type Flags } from '../flags.js';
+import { getFlagWarnings, parseFlags, type Flags } from '../flags.js';
 import { loadConfig } from '../config.js';
 import { logger } from '../logger.js';
 import { NodeGitClient, NoopGitClient } from '../git.js';
@@ -25,6 +25,7 @@ Options:
   --unstaged     Target unstaged diff
   --all          Target both staged + unstaged
   --doctor       Run doctor mode checks
+  --json         Output in JSON format (works with --doctor)
   --lang <ja|en> Output language (default: ja)
   --model <name> Override LLM model name
   --dry-run      Print message to stdout without committing
@@ -104,12 +105,32 @@ async function generate(
       { timeoutMs: config.llmTimeoutMs },
     );
     spinner.stop('生成完了');
-    return { message: result.trim(), contexts };
+
+    return { message: cleanupGeneratedMessage(result), contexts };
   } catch (err) {
     spinner.stop('生成失敗');
     logger.error(`ローカル LLM に接続できません: ${errorToString(err)}`);
     throw Object.assign(new Error('llm-failed'), { exitCode: 3 });
   }
+}
+
+export function cleanupGeneratedMessage(result: string): string {
+  let message = result.trim();
+  if (message.startsWith('```') && message.endsWith('```')) {
+    const lines = message.split('\n');
+    if (lines.length >= 2) {
+      // Remove first line (e.g. ```text) and last line (```)
+      message = lines.slice(1, -1).join('\n').trim();
+    } else {
+      // Handle single line like ```feat: x```
+      message = message.slice(3, -3).trim();
+    }
+  } else {
+    // Handle cases where only the first line has ```
+    message = message.replace(/^```(?:[a-z]*)\n/, '').replace(/\n```$/, '');
+  }
+
+  return message.trim();
 }
 
 async function interactive(
@@ -225,6 +246,10 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
     return 2;
   }
 
+  for (const warning of getFlagWarnings(flags)) {
+    logger.warn(warning);
+  }
+
   if (flags.help) {
     process.stdout.write(HELP_TEXT);
     return 0;
@@ -250,7 +275,11 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
       nexus: deps.nexus,
       llm: deps.llm,
     });
-    process.stdout.write(renderReport(report));
+    if (flags.json) {
+      process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    } else {
+      process.stdout.write(renderReport(report));
+    }
     return report.exitCode;
   }
 

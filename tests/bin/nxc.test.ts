@@ -196,4 +196,30 @@ describe('nxc main', () => {
 
     warnSpy.mockRestore();
   });
+
+  it('LLM がコードブロックで囲って出力した場合にクリーンアップする', async () => {
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'd', files: ['a.ts'] });
+    vi.mocked(mockLlm.chat).mockResolvedValue('```\nfeat: x\n```');
+    vi.mocked(clack.select).mockResolvedValue('commit');
+
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    await main(['--dry-run'], overrides);
+
+    expect(writeSpy).toHaveBeenCalledWith('feat: x\n');
+    writeSpy.mockRestore();
+  });
+
+  it('1行のコードブロックで囲まれた場合もクリーンアップする', async () => {
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'd', files: ['a.ts'] });
+    vi.mocked(mockLlm.chat).mockResolvedValue('```feat: y```');
+    vi.mocked(clack.select).mockResolvedValue('commit');
+
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    await main(['--dry-run'], overrides);
+
+    expect(writeSpy).toHaveBeenCalledWith('feat: y\n');
+    writeSpy.mockRestore();
+  });
 });
