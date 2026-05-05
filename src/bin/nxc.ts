@@ -276,7 +276,7 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
       llm: deps.llm,
     });
     if (flags.json) {
-      process.stdout.write(JSON.stringify(report, null, 2) + '\n');
+      process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     } else {
       process.stdout.write(renderReport(report));
     }
