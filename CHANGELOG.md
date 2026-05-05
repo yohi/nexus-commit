@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0](https://github.com/yohi/nexus-commit/compare/v1.1.0...v1.2.0) (2026-05-05)
+
+
+### Features
+
+* **doctor:** --json フラグを追加し、診断結果の JSON 出力をサポート ([0d98069](https://github.com/yohi/nexus-commit/commit/0d98069c0c514380ea2449b2e633cd29380ecabd))
+* **doctor:** 診断結果の Configuration 詳細に nexusUrl を追加 ([264d6f7](https://github.com/yohi/nexus-commit/commit/264d6f754ad19d8c8b11c4352758264187c54093))
+* **nxc:** CLI機能強化と開発ガイドライン更新 ([49c871d](https://github.com/yohi/nexus-commit/commit/49c871d3fb31cd6a3b29d8572e0c977240fdc5da))
+
+
+### Bug Fixes
+
+* **bin:** LLMの出力からマークダウンコードブロックを削除 ([6a82a65](https://github.com/yohi/nexus-commit/commit/6a82a65732eafa85e70717d9e8bae6f297992419))
+
 ## [1.1.0](https://github.com/yohi/nexus-commit/compare/v1.0.0...v1.1.0) (2026-05-04)
 
 
