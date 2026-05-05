@@ -16,6 +16,14 @@ export interface Flags {
   json: boolean;
 }
 
+export function getFlagWarnings(flags: Flags): string[] {
+  if (flags.json && !flags.doctor) {
+    return ['--json は --doctor と一緒に使うときのみ有効です。通常フローを続行します。'];
+  }
+
+  return [];
+}
+
 function requireNext(argv: string[], i: number, flag: string): string {
   const value = argv[i + 1];
   if (typeof value !== 'string' || value.startsWith('-')) {

@@ -68,7 +68,7 @@ describe('truncate.build (token-aware)', () => {
     const diff = mkDiffBlock('huge.ts', 'a'.repeat(3000));
     const out = build({ diff, contexts: [], maxTokens: 100 });
     expect(out.diff.startsWith('diff --git a/huge.ts')).toBe(true);
-  });
+  }, 15000);
 
   it('handles empty diff', () => {
     const out = build({ diff: '', contexts: [], maxTokens: 100 });

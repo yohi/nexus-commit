@@ -44,6 +44,15 @@ function truncateDiffByTokens(diff: string, budget: number): { truncated: string
     return { truncated: diff, used: fullTokens };
   }
 
+  const hasMultipleBlocks = diff.includes('\ndiff --git ');
+  if (!hasMultipleBlocks) {
+    const newlineIdx = diff.indexOf('\n');
+    const header = newlineIdx === -1 ? diff : diff.slice(0, newlineIdx + 1);
+    const body = newlineIdx === -1 ? '' : diff.slice(newlineIdx + 1);
+
+    return truncateSingleDiffBlock(header, body, budget);
+  }
+
   const blocks = splitDiffBlocks(diff);
   if (blocks.length === 0) {
     return { truncated: '', used: 0 };
@@ -71,6 +80,14 @@ function truncateDiffByTokens(diff: string, budget: number): { truncated: string
   const header = newlineIdx === -1 ? last : last.slice(0, newlineIdx + 1);
   const body = newlineIdx === -1 ? '' : last.slice(newlineIdx + 1);
 
+  return truncateSingleDiffBlock(header, body, budget);
+}
+
+function truncateSingleDiffBlock(
+  header: string,
+  body: string,
+  budget: number,
+): { truncated: string; used: number } {
   const headerTokens = countTokens(header);
   let finalResult: string;
   if (headerTokens >= budget) {

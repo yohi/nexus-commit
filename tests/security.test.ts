@@ -93,7 +93,7 @@ describe('safeJsonFetch', () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       text: () => Promise.resolve('{"status": "ok"}'),
-    } as Partial<Response> as Response);
+    } as unknown as Response);
 
     const url = new URL('https://example.com/api');
     const result = await safeJsonFetch(url, {}, 1000, 'Test context');
@@ -140,7 +140,7 @@ describe('safeJsonFetch', () => {
       status: 500,
       statusText: 'Internal Server Error',
       headers: new Headers({ 'content-length': '6000000' }), // 6MB
-    } as Partial<Response> as Response);
+    } as unknown as Response);
 
     const url = new URL('https://example.com/api');
     await expect(safeJsonFetch(url, {}, 1000, 'Test context')).rejects.toThrow(
@@ -155,7 +155,7 @@ describe('safeJsonFetch', () => {
       statusText: 'Error',
       headers: new Headers(),
       text: () => Promise.resolve('A'.repeat(300)),
-    } as Partial<Response> as Response);
+    } as unknown as Response);
 
     const url = new URL('https://example.com/api');
     await expect(safeJsonFetch(url, {}, 1000, 'Test context')).rejects.toThrow(
@@ -181,7 +181,7 @@ describe('safeJsonFetch', () => {
       statusText: 'Bad Request',
       headers: new Headers(),
       body: bodyMock,
-    } as Partial<Response> as Response);
+    } as unknown as Response);
 
     const url = new URL('https://example.com/api');
     await expect(safeJsonFetch(url, {}, 1000, 'Test context')).rejects.toThrow(
@@ -194,7 +194,7 @@ describe('safeJsonFetch', () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       text: () => Promise.resolve('invalid json'),
-    } as Partial<Response> as Response);
+    } as unknown as Response);
 
     const url = new URL('https://example.com/api');
     await expect(safeJsonFetch(url, {}, 1000, 'Test context')).rejects.toThrow(
@@ -249,7 +249,7 @@ describe('safeJsonFetch', () => {
       statusText: 'Bad Request',
       headers: new Headers(),
       body: bodyMock,
-    } as Partial<Response> as Response);
+    } as unknown as Response);
 
     const url = new URL('https://example.com/api');
     await expect(safeJsonFetch(url, {}, 1000, 'Test context')).rejects.toThrow(

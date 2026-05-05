@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseFlags } from '../src/flags.js';
+import { getFlagWarnings, parseFlags } from '../src/flags.js';
 
 describe('parseFlags', () => {
   it('returns defaults when argv is empty', () => {
@@ -95,5 +95,17 @@ describe('parseFlags', () => {
   it('--doctor 未指定時は false', () => {
     const flags = parseFlags([]);
     expect(flags.doctor).toBe(false);
+  });
+
+  it('--json を --doctor なしで指定した場合は警告を返す', () => {
+    const flags = parseFlags(['--json']);
+    expect(getFlagWarnings(flags)).toEqual([
+      '--json は --doctor と一緒に使うときのみ有効です。通常フローを続行します。',
+    ]);
+  });
+
+  it('--doctor --json の組み合わせでは警告しない', () => {
+    const flags = parseFlags(['--doctor', '--json']);
+    expect(getFlagWarnings(flags)).toEqual([]);
   });
 });
