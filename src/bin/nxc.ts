@@ -25,6 +25,7 @@ Options:
   --unstaged     Target unstaged diff
   --all          Target both staged + unstaged
   --doctor       Run doctor mode checks
+  --json         Output in JSON format (works with --doctor)
   --lang <ja|en> Output language (default: ja)
   --model <name> Override LLM model name
   --dry-run      Print message to stdout without committing
@@ -250,7 +251,11 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
       nexus: deps.nexus,
       llm: deps.llm,
     });
-    process.stdout.write(renderReport(report));
+    if (flags.json) {
+      process.stdout.write(JSON.stringify(report, null, 2) + '\n');
+    } else {
+      process.stdout.write(renderReport(report));
+    }
     return report.exitCode;
   }
 

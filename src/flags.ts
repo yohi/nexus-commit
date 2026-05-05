@@ -13,6 +13,7 @@ export interface Flags {
   help: boolean;
   version: boolean;
   doctor: boolean;
+  json: boolean;
 }
 
 function requireNext(argv: string[], i: number, flag: string): string {
@@ -33,6 +34,7 @@ export function parseFlags(argv: string[]): Flags {
   flags.lang = undefined;
   flags.model = undefined;
   flags.doctor = false;
+  flags.json = false;
 
   let diffModeExplicitlySet = false;
 
@@ -69,6 +71,9 @@ export function parseFlags(argv: string[]): Flags {
         break;
       case '--doctor':
         flags.doctor = true;
+        break;
+      case '--json':
+        flags.json = true;
         break;
       case '-h':
       case '--help':
