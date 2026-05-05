@@ -105,7 +105,24 @@ async function generate(
       { timeoutMs: config.llmTimeoutMs },
     );
     spinner.stop('生成完了');
-    return { message: result.trim(), contexts };
+
+    // Remove markdown code block if present
+    let message = result.trim();
+    if (message.startsWith('```') && message.endsWith('```')) {
+      const lines = message.split('\n');
+      if (lines.length >= 2) {
+        // Remove first line (e.g. ```text) and last line (```)
+        message = lines.slice(1, -1).join('\n').trim();
+      } else {
+        // Handle single line like ```feat: x```
+        message = message.replace(/^```[^]*\n?/, '').replace(/\n?```$/, '');
+      }
+    } else {
+      // Handle cases where only the first line has ```
+      message = message.replace(/^```(?:[a-z]*)\n/, '').replace(/\n```$/, '');
+    }
+
+    return { message: message.trim(), contexts };
   } catch (err) {
     spinner.stop('生成失敗');
     logger.error(`ローカル LLM に接続できません: ${errorToString(err)}`);
