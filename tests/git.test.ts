@@ -5,7 +5,7 @@ vi.mock('node:child_process', () => ({
 }));
 
 import { execFile } from 'node:child_process';
-import { NodeGitClient } from '../src/git.js';
+import { NodeGitClient, NoopGitClient } from '../src/git.js';
 
 const mockExecFile = vi.mocked(execFile);
 
@@ -158,5 +158,21 @@ describe('NodeGitClient', () => {
   it('commit surfaces underlying error', async () => {
     stubFailure(new Error('pre-commit hook failed'));
     await expect(new NodeGitClient().commit('m')).rejects.toThrow('pre-commit hook failed');
+  });
+});
+
+describe('NoopGitClient', () => {
+  const client = new NoopGitClient();
+
+  it('isRepo throws error', async () => {
+    await expect(client.isRepo()).rejects.toThrow('Git operation is disabled');
+  });
+
+  it('getDiff throws error', async () => {
+    await expect(client.getDiff('staged')).rejects.toThrow('Git operation is disabled');
+  });
+
+  it('commit throws error', async () => {
+    await expect(client.commit('msg')).rejects.toThrow('Git operation is disabled');
   });
 });
