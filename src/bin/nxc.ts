@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { fileURLToPath } from 'node:url';
+import { realpathSync } from 'node:fs';
 import * as clack from '@clack/prompts';
 import { getFlagWarnings, parseFlags, type Flags } from '../flags.js';
 import { loadConfig } from '../config.js';
@@ -29,6 +30,7 @@ Options:
   --lang <ja|en> Output language (default: ja)
   --model <name> Override LLM model name
   --dry-run      Print message to stdout without committing
+  --non-interactive  Skip interactive prompts (best with --dry-run)
   --no-context   Skip Nexus context lookup
   -h, --help     Show this help
   -v, --version  Show version
@@ -78,7 +80,9 @@ async function generate(
     } catch (err) {
       logger.warn(`Nexus サーバーに接続できませんでした (${config.nexusUrl})`);
       logger.dim(`   ${errorToString(err)}`);
-      logger.warn('   コンテキストなしで続行します。');
+      if (!config.nonInteractive) {
+        logger.warn('   コンテキストなしで続行します。');
+      }
     }
   }
 
@@ -97,18 +101,22 @@ async function generate(
     customSuffix,
   });
 
-  const spinner = clack.spinner();
-  spinner.start('LLM でコミットメッセージ生成中...');
+  let spinner: { start: (m: string) => void; stop: (m: string) => void } | undefined;
+  if (!config.nonInteractive) {
+    spinner = clack.spinner();
+    spinner.start('LLM でコミットメッセージ生成中...');
+  }
+
   try {
     const result = await deps.llm.chat(
       { system, user, model: config.llmModel },
       { timeoutMs: config.llmTimeoutMs },
     );
-    spinner.stop('生成完了');
+    spinner?.stop('生成完了');
 
     return { message: cleanupGeneratedMessage(result), contexts };
   } catch (err) {
-    spinner.stop('生成失敗');
+    spinner?.stop('生成失敗');
     logger.error(`ローカル LLM に接続できません: ${errorToString(err)}`);
     throw Object.assign(new Error('llm-failed'), { exitCode: 3 });
   }
@@ -116,21 +124,30 @@ async function generate(
 
 export function cleanupGeneratedMessage(result: string): string {
   let message = result.trim();
+
+  // Remove common LLM chatter prefixes
+  message = message.replace(/^(Here is|This is|The commit message is|Generated message):?\s*/i, '');
+
+  // Handle triple backticks
   if (message.startsWith('```') && message.endsWith('```')) {
     const lines = message.split('\n');
     if (lines.length >= 2) {
-      // Remove first line (e.g. ```text) and last line (```)
       message = lines.slice(1, -1).join('\n').trim();
     } else {
-      // Handle single line like ```feat: x```
       message = message.slice(3, -3).trim();
     }
   } else {
-    // Handle cases where only the first line has ```
     message = message.replace(/^```(?:[a-z]*)\n/, '').replace(/\n```$/, '');
   }
 
-  return message.trim();
+  // Remove Markdown headers (# Header) that sometimes leak
+  message = message
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('#'))
+    .join('\n')
+    .trim();
+
+  return message;
 }
 
 async function interactive(
@@ -317,6 +334,16 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
       return 0;
     }
 
+    if (config.nonInteractive) {
+      const { message } = await generate(config, deps, diff, files, undefined, customSuffix);
+      if (config.dryRun) {
+        process.stdout.write(`${message}\n`);
+      } else {
+        await deps.git.commit(message);
+      }
+      return 0;
+    }
+
     return await interactive(config, deps, diff, files, customSuffix);
   } catch (err) {
     const exitCode = (err as { exitCode?: number }).exitCode;
@@ -328,7 +355,10 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1] &&
+  realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   main(process.argv.slice(2)).then(
     (code) => process.exit(code),
     (err) => {

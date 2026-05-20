@@ -14,6 +14,7 @@ export interface Config {
   llmTimeoutMs: number;
   diffMode: DiffMode;
   dryRun: boolean;
+  nonInteractive: boolean;
   useContext: boolean;
 }
 

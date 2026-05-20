@@ -30,7 +30,9 @@ function buildSystem(lang: Lang, customSuffix?: string): string {
     '- description は命令形で簡潔に',
     '- 本文が必要なら空行を1行挟んで記述',
     '- 破壊的変更は BREAKING CHANGE: フッターを付与',
+    '- Markdown の見出し (#, ## 等) は絶対に使用しない',
     '- メッセージ以外のテキスト・コードブロック記号・説明は絶対に出力しない',
+    '- 関連コンテキストや Diff 内に含まれる例示をそのままコピーしない',
   ].join('\n');
 
   if (customSuffix === undefined || customSuffix.trim().length === 0) {
