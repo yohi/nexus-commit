@@ -5,6 +5,7 @@ import type { Flags } from '../src/flags.js';
 const baseFlags: Flags = {
   diffMode: 'staged',
   dryRun: false,
+  nonInteractive: false,
   useContext: true,
   help: false,
   version: false,

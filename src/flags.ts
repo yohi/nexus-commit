@@ -23,7 +23,9 @@ export function getFlagWarnings(flags: Flags): string[] {
   }
 
   if (flags.nonInteractive && !flags.dryRun) {
-    return ['--non-interactive は現在 --dry-run と併用したときのみコミットせずに出力します。'];
+    return [
+      '--non-interactive: 対話確認をスキップして自動コミットします。出力のみ行いたい場合は --dry-run を併用してください。',
+    ];
   }
 
   return [];

@@ -7,6 +7,7 @@ describe('parseFlags', () => {
     expect(flags).toMatchObject({
       diffMode: 'staged',
       dryRun: false,
+      nonInteractive: false,
       useContext: true,
       help: false,
       version: false,
@@ -29,6 +30,10 @@ describe('parseFlags', () => {
 
   it('--dry-run toggles dryRun', () => {
     expect(parseFlags(['--dry-run']).dryRun).toBe(true);
+  });
+
+  it('--non-interactive toggles nonInteractive', () => {
+    expect(parseFlags(['--non-interactive']).nonInteractive).toBe(true);
   });
 
   it('--no-context disables useContext', () => {

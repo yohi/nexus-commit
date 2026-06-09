@@ -26,7 +26,7 @@ function loadEnvFile(cwd: string): void {
 
       const value = values.join('=').trim();
       if (value && process.env[k] === undefined) {
-        process.env[k] = value.replace(/^["'](.*)["']$/, '$1');
+        process.env[k] = value.replace(/^(["'])(.*)\1$/, '$2');
       }
     }
   } catch {

@@ -355,10 +355,17 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
   }
 }
 
-if (
-  process.argv[1] &&
-  realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
+let _isMain = false;
+try {
+  _isMain = !!(
+    process.argv[1] &&
+    realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
+  );
+} catch {
+  // realpathSync can throw ENOENT if the path no longer exists
+}
+
+if (_isMain) {
   main(process.argv.slice(2)).then(
     (code) => process.exit(code),
     (err) => {
