@@ -9,6 +9,7 @@ export interface Flags {
   lang?: Lang;
   model?: string;
   dryRun: boolean;
+  nonInteractive: boolean;
   useContext: boolean;
   help: boolean;
   version: boolean;
@@ -19,6 +20,12 @@ export interface Flags {
 export function getFlagWarnings(flags: Flags): string[] {
   if (flags.json && !flags.doctor) {
     return ['--json は --doctor と一緒に使うときのみ有効です。通常フローを続行します。'];
+  }
+
+  if (flags.nonInteractive && !flags.dryRun) {
+    return [
+      '--non-interactive: 対話確認をスキップして自動コミットします。出力のみ行いたい場合は --dry-run を併用してください。',
+    ];
   }
 
   return [];
@@ -36,6 +43,7 @@ export function parseFlags(argv: string[]): Flags {
   const flags = Object.create(null) as Flags;
   flags.diffMode = 'staged';
   flags.dryRun = false;
+  flags.nonInteractive = false;
   flags.useContext = true;
   flags.help = false;
   flags.version = false;
@@ -73,6 +81,9 @@ export function parseFlags(argv: string[]): Flags {
         break;
       case '--dry-run':
         flags.dryRun = true;
+        break;
+      case '--non-interactive':
+        flags.nonInteractive = true;
         break;
       case '--no-context':
         flags.useContext = false;

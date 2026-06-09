@@ -11,6 +11,7 @@ const mockConfig: Config = {
   llmModel: 'llama3',
   llmTimeoutMs: 60000,
   dryRun: false,
+  nonInteractive: false,
   lang: 'ja',
   maxTokens: 2000,
   diffMode: 'staged',
