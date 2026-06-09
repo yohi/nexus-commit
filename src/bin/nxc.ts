@@ -143,7 +143,7 @@ export function cleanupGeneratedMessage(result: string): string {
   // Remove Markdown headers (# Header) that sometimes leak
   message = message
     .split('\n')
-    .filter((line) => !line.trim().startsWith('#'))
+    .filter((line) => !/^#+\s/.test(line.trim()))
     .join('\n')
     .trim();
 
