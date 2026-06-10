@@ -98,7 +98,7 @@ nxc 起動 (useContext=true かつ auto-start 有効時)
              { detached: true, stdio: "ignore", env })
        child.unref()
   5. ready 待ち: /api/search を間隔ポーリング（最大 N 秒, 指数backoff）
-  6. <repo>/.nexus/nxc-daemon.json に { port, pid } を書込
+  6. <repo>/.nexus/nxc-daemon.json に { port, pid, startedAt } を書込
   7. そのポートで接続して通常フローへ
   ※ どの段階で失敗しても従来の graceful fallback（warn + context=[]）に落ちる
 ```
@@ -185,7 +185,7 @@ nxc 起動 (useContext=true かつ auto-start 有効時)
 - U2【確定】ポート再発見は **ランタイム状態ファイル方式(A)**（`<repo>/.nexus/nxc-daemon.json` に `{ port, pid, startedAt }`）。
 - U3【確定】`--non-interactive` / CI 環境では **自動起動を抑制**し従来 fallback に落とす。
 - U4【確定】nxc は daemon を停止しない（永続化）。明示停止 `nxc --stop-nexus`（状態ファイルの pid へ SIGTERM）は初期スコープ外の将来検討。
-  daemon を手動停止したい場合は `kill $(cat <repo>/.nexus/nxc-daemon.json | node -e "process.stdin.resume();let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).pid))")` または `ps aux | grep nexus` で PID を特定して `kill <pid>` を実行すること。
+  daemon を手動停止したい場合は `kill $(node -p "require('./.nexus/nxc-daemon.json').pid")` で PID を取得して停止できる（`jq` 利用環境では `kill $(jq -r .pid .nexus/nxc-daemon.json)` も可）。将来的には `nxc --stop-nexus` フラグでこの操作をカプセル化する予定。
 - U5【確定】`--project-root` には **git toplevel**（`git rev-parse --show-toplevel`）を渡す。
 
 ---
