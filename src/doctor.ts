@@ -63,7 +63,16 @@ export async function runDoctor(config: Config, deps: DoctorDeps): Promise<Docto
       });
     }
   } catch (err) {
-    const defaultPort = config.nexusUrl ? (new URL(config.nexusUrl).port || '8080') : '8080';
+    let defaultPort = '8080';
+    if (config.nexusUrl) {
+      try {
+        defaultPort = new URL(config.nexusUrl).port || '8080';
+      } catch (error) {
+        console.warn(
+          `⚠ Nexus URL の解析に失敗しました (${config.nexusUrl})。ポート 8080 を使用します。`,
+        );
+      }
+    }
     results.push({
       title: 'Nexus API reachable',
       status: 'fail',

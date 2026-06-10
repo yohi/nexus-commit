@@ -73,7 +73,7 @@ graph LR
    nexus
    ```
 
-1. **nexus-commit の実行**
+2. **nexus-commit の実行**
 
    Nexus サーバー起動後、以下のいずれかの方法で実行できます。
 
