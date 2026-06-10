@@ -61,6 +61,23 @@ graph LR
 
 #### セットアップ・実行方法
 - **npx からの直接実行 (推奨)**: `npx @yohi/nexus-commit`
+
+### 1. Nexus サーバーの起動 (別ターミナルで実行)
+
+Nexus は以下のいずれかの方法で起動できます。nexus-commit 連携時には **HTTPモード**を推奨します。
+
+```bash
+# HTTP モード (nexus-commit 連携推奨)
+nexus --port 8080
+
+# stdio モード (Claude Desktop 等の MCP クライアント用)
+nexus
+```
+
+### 2. nexus-commit の実行
+
+Nexus サーバー起動後、以下のいずれかの方法で実行できます。
+
 - **npm からのインストール**: `npm install -g @yohi/nexus-commit --registry=https://npm.pkg.github.com`
 - **動作確認 (診断モード)**: セットアップ後、以下のコマンドで LLM や Nexus との接続を確認できます。
   ```bash

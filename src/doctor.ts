@@ -63,11 +63,12 @@ export async function runDoctor(config: Config, deps: DoctorDeps): Promise<Docto
       });
     }
   } catch (err) {
+    const defaultPort = config.nexusUrl ? new URL(config.nexusUrl).port : '8080';
     results.push({
       title: 'Nexus API reachable',
       status: 'fail',
       detail: config.nexusUrl,
-      hint: `Nexus API not reachable. Is the server running? (${err instanceof Error ? err.message : String(err)})`,
+      hint: `Nexus API not reachable. Start with: nexus --port ${defaultPort} (${err instanceof Error ? err.message : String(err)})`,
     });
   }
 
