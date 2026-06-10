@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/yohi/nexus-commit/compare/v1.2.0...v1.3.0) (2026-06-10)
+
+
+### Features
+
+* Nexus HTTPモード対応のドキュメント・診断メッセージを追加 ([d48bfd4](https://github.com/yohi/nexus-commit/commit/d48bfd4f037057273ef03664d96b62e17b334fb2))
+* Nexus HTTPモード対応のドキュメント・診断メッセージを追加 ([5764d10](https://github.com/yohi/nexus-commit/commit/5764d10935a90714d91d67ae55a7a6f9e035dd4a))
+
+
+### Bug Fixes
+
+* doctor の Nexus URL パース警告を解消 ([03342cc](https://github.com/yohi/nexus-commit/commit/03342cc5d20d68e028ece6eb87dbda281576ba7b))
+
 ## [1.2.0](https://github.com/yohi/nexus-commit/compare/v1.1.0...v1.2.0) (2026-06-09)
 
 
