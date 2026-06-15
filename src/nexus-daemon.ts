@@ -103,6 +103,7 @@ function waitForDaemon(
     };
     abortSignal?.addEventListener('abort', onAbort);
 
+    let currentIntervalMs = intervalMs;
     const check = async () => {
       await Promise.resolve();
       const elapsed = Date.now() - start;
@@ -113,12 +114,18 @@ function waitForDaemon(
         return;
       }
       if (
-        await isDaemonAlive(fetch, port, Math.min(intervalMs, timeoutMs - elapsed), abortSignal)
+        await isDaemonAlive(
+          fetch,
+          port,
+          Math.min(currentIntervalMs, timeoutMs - elapsed),
+          abortSignal,
+        )
       ) {
         resolve();
         return;
       }
-      setTimeout(check, intervalMs);
+      setTimeout(check, currentIntervalMs);
+      currentIntervalMs = Math.min(currentIntervalMs * 1.5, 5000);
     };
     setTimeout(check, 0);
 
@@ -220,7 +227,9 @@ export async function ensureDaemon(options: EnsureDaemonOptions): Promise<{ port
       if (attempt === MAX_RETRIES) {
         throw finalErr;
       }
-      logger.warn(`ポート ${port} での起動に失敗しました (${errorToString(finalErr)})。再試行します...`);
+      logger.warn(
+        `ポート ${port} での起動に失敗しました (${errorToString(finalErr)})。再試行します...`,
+      );
     } finally {
       child.off('exit', onExit);
       child.off('error', onError);

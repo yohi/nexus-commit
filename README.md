@@ -73,7 +73,7 @@ graph LR
    nexus
    ```
 
-   または、`--auto-start-nexus` フラグ（または `NEXUS_AUTO_START=1`）を指定すると、`nxc` 実行時に Nexus daemon を自動的に起動・再利用します。対話モードでのみ有効で、ポート番号は自動的に管理されます。
+   または、`--auto-start-nexus` フラグ（または `NEXUS_AUTO_START=1`）を指定すると、`nxc` 実行時に Nexus daemon を自動的に起動・再利用します。対話モードでのみ有効で、ポート番号は自動的に管理されます。手動で終了させる場合は `kill $(node -p "require('./.nexus/nxc-daemon.json').pid")` を実行してください。
 2. **nexus-commit の実行**
 
    Nexus サーバー起動後、以下のいずれかの方法で実行できます。
