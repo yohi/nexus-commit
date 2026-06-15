@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.4.0](https://github.com/yohi/nexus-commit/compare/v1.3.0...v1.4.0) (2026-06-15)
+
+
+### Features
+
+* **bin:** nxc に Nexus daemon 自動起動を統合 ([4691b92](https://github.com/yohi/nexus-commit/commit/4691b922f048444489875d800d2c6684592fd526))
+* **daemon-state:** daemon 実行時状態ファイルのスキーマとパーサーを追加 ([91b72f2](https://github.com/yohi/nexus-commit/commit/91b72f243d69136877214048cc45c39110007e65))
+* **doctor:** Nexus daemon 診断を追加 ([d8b8a3f](https://github.com/yohi/nexus-commit/commit/d8b8a3f26fd7f4404d3113f64b6c0736b61ab9a4))
+* **flags:** --auto-start-nexus フラグと設定を追加 ([2db7cde](https://github.com/yohi/nexus-commit/commit/2db7cdec57f95491ecd0981003c0abd6051c94ef))
+* **git:** リポジトリルート取得ヘルパーを追加 ([78c5ad4](https://github.com/yohi/nexus-commit/commit/78c5ad4cd9db1d854bcb091f84ca83e7f7e116c4))
+* Nexus daemon の自動起動を追加 ([ad3b88c](https://github.com/yohi/nexus-commit/commit/ad3b88c7ffc9132424956bd4dac23c22977b44c8))
+* **nexus-daemon:** Nexus daemon 自動起動ライフサイクルを追加 ([57524d2](https://github.com/yohi/nexus-commit/commit/57524d2abca6eb905932003c621dcecb02ab5d89))
+* **nexus-spawn:** Nexus バイナリ解決を追加 ([97e22fe](https://github.com/yohi/nexus-commit/commit/97e22fec3aa69510d75edadf4686964b6acf1139))
+* **port:** 空きポート解決ユーティリティを追加 ([50a7dd2](https://github.com/yohi/nexus-commit/commit/50a7dd2ce67821f858aefdf8609273b471e67e64))
+
+
+### Bug Fixes
+
+* auto-start Nexus 周辺の CLI と設定を修正 ([776edfd](https://github.com/yohi/nexus-commit/commit/776edfd9837aac892da85a8478c5aa910a5e40b0))
+* **daemon:** TOCTOU競合時の再試行ループを実装 ([ca6036d](https://github.com/yohi/nexus-commit/commit/ca6036dc0c9cadd096d3f1b9c4a3d45417e7e638))
+* Nexus daemon のログ fd を確実に閉じる ([7f6ac5f](https://github.com/yohi/nexus-commit/commit/7f6ac5f3a7ecf87ad4b00d783f77c7efce88265d))
+* Nexus daemon の状態保存を堅牢化 ([c79f0c3](https://github.com/yohi/nexus-commit/commit/c79f0c3e72cbd5b74b626b28ed10d70aa87314ba))
+* Nexus daemon 自動起動のレビュー指摘に対応 ([f6a0fd0](https://github.com/yohi/nexus-commit/commit/f6a0fd0ca966405bed73a534357dbdea0c55c356))
+* **nexus-daemon:** 起動失敗時に孤児プロセスを確実に終了する ([a8a8903](https://github.com/yohi/nexus-commit/commit/a8a8903ce87a8a7c41f487a29a8767776d1c02ac))
+
 ## [1.3.0](https://github.com/yohi/nexus-commit/compare/v1.2.0...v1.3.0) (2026-06-10)
 
 
