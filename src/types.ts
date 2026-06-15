@@ -16,6 +16,7 @@ export interface Config {
   dryRun: boolean;
   nonInteractive: boolean;
   useContext: boolean;
+  autoStartNexus: boolean;
 }
 
 export interface DiffResult {

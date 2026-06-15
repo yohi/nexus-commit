@@ -11,6 +11,7 @@ const baseFlags: Flags = {
   version: false,
   doctor: false,
   json: false,
+  autoStartNexus: false,
 };
 
 describe('loadConfig', () => {
