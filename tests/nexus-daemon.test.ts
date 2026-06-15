@@ -33,6 +33,7 @@ function createMockFetch(
 
 function createMockFs(initial: Record<string, string> = {}): FsLike & {
   mkdir: ReturnType<typeof vi.fn>;
+  close: ReturnType<typeof vi.fn>;
 } {
   const files = new Map<string, string>(Object.entries(initial));
   let fdCounter = 10;
@@ -57,6 +58,7 @@ function createMockFs(initial: Record<string, string> = {}): FsLike & {
       const fd = fdCounter++;
       return fd;
     }),
+    close: vi.fn(async (_fd: number) => {}),
   };
 }
 
@@ -346,6 +348,33 @@ describe('ensureDaemon', () => {
 
     await vi.advanceTimersByTimeAsync(200);
     await expect(resultPromise).rejects.toThrow('ready');
+  });
+
+  test('起動失敗時でも NEXUS_LOG_FILE の fd を閉じる', async () => {
+    const fs = createMockFs();
+    const child = createMockChildProcess({ pid: 54321 });
+    const spawn = vi.fn(() => child);
+
+    const resultPromise = ensureDaemon({
+      repoRoot,
+      env: { NEXUS_LOG_FILE: '/var/log/nexus.log' },
+      fs,
+      fetch: createMockFetch([]),
+      spawn: spawn as unknown as typeof import('node:child_process').spawn,
+      getFreePort: async () => 9090,
+      findBinary: async () => ({ binary: '/bin/nexus', isNpxFallback: false }),
+      logger: createMockLogger(),
+      readyTimeoutMs: 50,
+      readyIntervalMs: 10,
+      nodeVersion: '24.0.0',
+    });
+    resultPromise.catch(() => {});
+
+    await vi.advanceTimersByTimeAsync(200);
+    await expect(resultPromise).rejects.toThrow('ready');
+
+    expect(fs.open).toHaveBeenCalledWith('/var/log/nexus.log', 'a');
+    expect(fs.close).toHaveBeenCalledWith(10);
   });
 
   test('NEXUS_LOG_FILE が設定されている場合は stdout/stderr をファイルにリダイレクトする', async () => {

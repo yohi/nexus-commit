@@ -130,8 +130,16 @@ describe('loadConfig', () => {
     expect(cfg.autoStartNexus).toBe(true);
   });
 
-  it('NEXUS_AUTO_START values other than 1 do not enable auto-start', () => {
+  it('autoStartNexus remains enabled when both flag and env are enabled', () => {
+    const cfg = loadConfig({ NEXUS_AUTO_START: '1' }, { ...baseFlags, autoStartNexus: true });
+    expect(cfg.autoStartNexus).toBe(true);
+  });
+
+  it('NEXUS_AUTO_START=0 does not enable auto-start', () => {
     expect(loadConfig({ NEXUS_AUTO_START: '0' }, baseFlags).autoStartNexus).toBe(false);
+  });
+
+  it('NEXUS_AUTO_START=true does not enable auto-start', () => {
     expect(loadConfig({ NEXUS_AUTO_START: 'true' }, baseFlags).autoStartNexus).toBe(false);
   });
 

@@ -17,6 +17,7 @@ export interface FsLike {
   mkdir(path: string, options: { recursive: boolean }): Promise<void>;
   unlink(path: string): Promise<void>;
   open(path: string, flags: string): Promise<number>;
+  close(fd: number): Promise<void>;
 }
 
 export interface EnsureDaemonOptions {
@@ -43,12 +44,20 @@ export function getDaemonStatePath(repoRoot: string): string {
 
 async function createDefaultFs(): Promise<FsLike> {
   const fs = await import('node:fs/promises');
+  const nodeFs = await import('node:fs');
   return {
     readFile: (path, encoding) => fs.readFile(path, encoding) as Promise<string>,
     writeFile: (path, content) => fs.writeFile(path, content),
     mkdir: (path, options) => fs.mkdir(path, options).then(() => {}),
     unlink: (path) => fs.unlink(path),
-    open: (path, flags) => fs.open(path, flags).then((handle) => handle.fd),
+    open: (path, flags) =>
+      new Promise((resolve, reject) => {
+        nodeFs.open(path, flags, (err, fd) => (err ? reject(err) : resolve(fd)));
+      }),
+    close: (fd) =>
+      new Promise((resolve, reject) => {
+        nodeFs.close(fd, (err) => (err ? reject(err) : resolve()));
+      }),
   };
 }
 
@@ -203,63 +212,71 @@ export async function ensureDaemon(options: EnsureDaemonOptions): Promise<{ port
   }
 
   const MAX_RETRIES = 3;
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    const port = await getFreePort();
+  try {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      const port = await getFreePort();
 
-    const child = spawn(
-      binary,
-      [...(argsPrefix ?? []), '--port', String(port), '--project-root', repoRoot],
-      {
-        detached: true,
-        stdio: logFd !== null ? ['ignore', logFd, logFd] : 'ignore',
-        env,
-      },
-    ) as ChildProcess;
+      const child = spawn(
+        binary,
+        [...(argsPrefix ?? []), '--port', String(port), '--project-root', repoRoot],
+        {
+          detached: true,
+          stdio: logFd !== null ? ['ignore', logFd, logFd] : 'ignore',
+          env,
+        },
+      ) as ChildProcess;
 
-    child.unref();
+      child.unref();
 
-    const abortController = new AbortController();
-    let exitError: Error | undefined;
-    const onExit = (code: number | null) => {
-      exitError = new Error(`Nexus daemon exited prematurely with code ${code}`);
-      abortController.abort();
-    };
-    const onError = (err: Error) => {
-      exitError = new Error(`Nexus daemon failed to start: ${err.message}`);
-      abortController.abort();
-    };
-    child.once('exit', onExit);
-    child.once('error', onError);
-
-    try {
-      await waitForDaemon(fetch, port, readyTimeoutMs, readyIntervalMs, abortController.signal);
-
-      if (child.pid === undefined) {
-        throw new Error('Nexus daemon process has no PID');
-      }
-
-      const state: DaemonState = {
-        port,
-        pid: child.pid,
-        startedAt: new Date().toISOString(),
+      const abortController = new AbortController();
+      let exitError: Error | undefined;
+      const onExit = (code: number | null) => {
+        exitError = new Error(`Nexus daemon exited prematurely with code ${code}`);
+        abortController.abort();
       };
-      await fs.mkdir(dirname(statePath), { recursive: true });
-      await fs.writeFile(statePath, serializeDaemonState(state));
+      const onError = (err: Error) => {
+        exitError = new Error(`Nexus daemon failed to start: ${err.message}`);
+        abortController.abort();
+      };
+      child.once('exit', onExit);
+      child.once('error', onError);
 
-      return { port };
-    } catch (err) {
-      const finalErr = exitError ?? err;
-      if (attempt === MAX_RETRIES) {
-        throw finalErr;
+      try {
+        await waitForDaemon(fetch, port, readyTimeoutMs, readyIntervalMs, abortController.signal);
+
+        if (child.pid === undefined) {
+          throw new Error('Nexus daemon process has no PID');
+        }
+
+        const state: DaemonState = {
+          port,
+          pid: child.pid,
+          startedAt: new Date().toISOString(),
+        };
+        await fs.mkdir(dirname(statePath), { recursive: true });
+        await fs.writeFile(statePath, serializeDaemonState(state));
+
+        return { port };
+      } catch (err) {
+        const finalErr = exitError ?? err;
+        if (attempt === MAX_RETRIES) {
+          throw finalErr;
+        }
+        logger.warn(
+          `ポート ${port} での起動に失敗しました (${errorToString(finalErr)})。再試行します...`,
+        );
+      } finally {
+        child.off('exit', onExit);
+        child.off('error', onError);
       }
-      logger.warn(
-        `ポート ${port} での起動に失敗しました (${errorToString(finalErr)})。再試行します...`,
-      );
-    } finally {
-      child.off('exit', onExit);
-      child.off('error', onError);
+    }
+
+    throw new Error('Unreachable');
+  } finally {
+    if (logFd !== null) {
+      await fs.close(logFd).catch((err) => {
+        logger.warn(`NEXUS_LOG_FILE のクローズに失敗しました (${errorToString(err)})。`);
+      });
     }
   }
-
-  throw new Error('Unreachable');
 }
