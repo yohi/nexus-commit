@@ -25,10 +25,16 @@ vi.mock('@clack/prompts', () => ({
   },
   note: vi.fn(),
 }));
-
 vi.mock('../../src/prompt-file.js', () => ({
   loadPromptFile: vi.fn(async () => ({ path: null, content: null })),
   findPromptFile: vi.fn(async () => null),
+}));
+
+vi.mock('../../src/nexus-client.js', () => ({
+  HttpNexusClient: vi.fn().mockImplementation((baseUrl: string) => ({
+    search: vi.fn().mockResolvedValue([]),
+    baseUrl,
+  })),
 }));
 
 describe('nxc main', () => {
@@ -221,5 +227,118 @@ describe('nxc main', () => {
 
     expect(writeSpy).toHaveBeenCalledWith('feat: y\n');
     writeSpy.mockRestore();
+  });
+
+  it('--auto-start-nexus で Nexus daemon を自動起動し、解決したポートを使う', async () => {
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'test diff', files: ['test.ts'] });
+    vi.mocked(mockLlm.chat).mockResolvedValue('feat: test commit');
+    vi.mocked(clack.select).mockResolvedValue('commit');
+
+    const ensureDaemon = vi.fn().mockResolvedValue({ port: 9999 });
+    const getRepoRoot = vi.fn().mockResolvedValue('/repo');
+    const { HttpNexusClient } = await import('../../src/nexus-client.js');
+
+    const code = await main(['--auto-start-nexus', '--dry-run'], {
+      git: mockGit,
+      llm: mockLlm,
+      ensureDaemon,
+      getRepoRoot,
+    });
+
+    expect(code).toBe(0);
+    expect(getRepoRoot).toHaveBeenCalled();
+    expect(ensureDaemon).toHaveBeenCalledWith(expect.objectContaining({ repoRoot: '/repo' }));
+    expect(HttpNexusClient).toHaveBeenCalledWith('http://127.0.0.1:9999');
+  });
+
+  it('NEXUS_API_URL が明示指定されている場合は自動起動しない', async () => {
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'test diff', files: ['test.ts'] });
+    vi.mocked(mockLlm.chat).mockResolvedValue('feat: test commit');
+    vi.mocked(clack.select).mockResolvedValue('commit');
+
+    const ensureDaemon = vi.fn().mockResolvedValue({ port: 9999 });
+    const getRepoRoot = vi.fn().mockResolvedValue('/repo');
+    const { HttpNexusClient } = await import('../../src/nexus-client.js');
+
+    const original = process.env.NEXUS_API_URL;
+    process.env.NEXUS_API_URL = 'http://existing:8080';
+    try {
+      await main(['--auto-start-nexus', '--dry-run'], {
+        git: mockGit,
+        llm: mockLlm,
+        ensureDaemon,
+        getRepoRoot,
+      });
+    } finally {
+      if (original === undefined) {
+        delete process.env.NEXUS_API_URL;
+      } else {
+        process.env.NEXUS_API_URL = original;
+      }
+    }
+
+    expect(ensureDaemon).not.toHaveBeenCalled();
+    expect(HttpNexusClient).toHaveBeenCalledWith('http://existing:8080');
+  });
+
+  it('--non-interactive 時は自動起動しない', async () => {
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'test diff', files: ['test.ts'] });
+    vi.mocked(mockLlm.chat).mockResolvedValue('feat: test commit');
+
+    const ensureDaemon = vi.fn().mockResolvedValue({ port: 9999 });
+
+    await main(['--auto-start-nexus', '--non-interactive', '--dry-run'], {
+      ...overrides,
+      ensureDaemon,
+    });
+
+    expect(ensureDaemon).not.toHaveBeenCalled();
+  });
+
+  it('CI 環境では自動起動しない', async () => {
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'test diff', files: ['test.ts'] });
+    vi.mocked(mockLlm.chat).mockResolvedValue('feat: test commit');
+    vi.mocked(clack.select).mockResolvedValue('commit');
+
+    const ensureDaemon = vi.fn().mockResolvedValue({ port: 9999 });
+
+    const original = process.env.CI;
+    process.env.CI = 'true';
+    try {
+      await main(['--auto-start-nexus', '--dry-run'], {
+        ...overrides,
+        ensureDaemon,
+      });
+    } finally {
+      process.env.CI = original;
+    }
+
+    expect(ensureDaemon).not.toHaveBeenCalled();
+  });
+
+  it('daemon 自動起動に失敗しても graceful fallback する', async () => {
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'test diff', files: ['test.ts'] });
+    vi.mocked(mockLlm.chat).mockResolvedValue('feat: test commit');
+    vi.mocked(clack.select).mockResolvedValue('commit');
+
+    const ensureDaemon = vi.fn().mockRejectedValue(new Error('nexus not found'));
+    const getRepoRoot = vi.fn().mockResolvedValue('/repo');
+    const { HttpNexusClient } = await import('../../src/nexus-client.js');
+
+    const code = await main(['--auto-start-nexus', '--dry-run'], {
+      git: mockGit,
+      llm: mockLlm,
+      ensureDaemon,
+      getRepoRoot,
+    });
+
+    expect(code).toBe(0);
+    expect(ensureDaemon).toHaveBeenCalled();
+    expect(HttpNexusClient).toHaveBeenCalledWith('http://localhost:8080');
   });
 });
