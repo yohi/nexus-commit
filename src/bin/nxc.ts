@@ -30,7 +30,6 @@ Options:
   --doctor       Run doctor mode checks
   --auto-start-nexus  Automatically start a local Nexus daemon if needed
   --json         Output in JSON format (works with --doctor)
-  --json         Output in JSON format (works with --doctor)
   --lang <ja|en> Output language (default: ja)
   --model <name> Override LLM model name
   --dry-run      Print message to stdout without committing
@@ -91,6 +90,7 @@ async function tryAutoStartNexus(config: Config, overrides?: Partial<Deps>): Pro
     const { port } = await (overrides?.ensureDaemon ?? ensureDaemon)({
       repoRoot,
       env: process.env,
+      nodeVersion: process.versions.node,
     });
     return `http://127.0.0.1:${port}`;
   } catch (err) {

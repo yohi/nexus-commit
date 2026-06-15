@@ -239,12 +239,23 @@ describe('nxc main', () => {
     const getRepoRoot = vi.fn().mockResolvedValue('/repo');
     const { HttpNexusClient } = await import('../../src/nexus-client.js');
 
-    const code = await main(['--auto-start-nexus', '--dry-run'], {
-      git: mockGit,
-      llm: mockLlm,
-      ensureDaemon,
-      getRepoRoot,
-    });
+    const original = process.env.CI;
+    delete process.env.CI;
+    let code = -1;
+    try {
+      code = await main(['--auto-start-nexus', '--dry-run'], {
+        git: mockGit,
+        llm: mockLlm,
+        ensureDaemon,
+        getRepoRoot,
+      });
+    } finally {
+      if (original === undefined) {
+        delete process.env.CI;
+      } else {
+        process.env.CI = original;
+      }
+    }
 
     expect(code).toBe(0);
     expect(getRepoRoot).toHaveBeenCalled();
@@ -314,7 +325,11 @@ describe('nxc main', () => {
         ensureDaemon,
       });
     } finally {
-      process.env.CI = original;
+      if (original === undefined) {
+        delete process.env.CI;
+      } else {
+        process.env.CI = original;
+      }
     }
 
     expect(ensureDaemon).not.toHaveBeenCalled();
@@ -330,12 +345,23 @@ describe('nxc main', () => {
     const getRepoRoot = vi.fn().mockResolvedValue('/repo');
     const { HttpNexusClient } = await import('../../src/nexus-client.js');
 
-    const code = await main(['--auto-start-nexus', '--dry-run'], {
-      git: mockGit,
-      llm: mockLlm,
-      ensureDaemon,
-      getRepoRoot,
-    });
+    const original = process.env.CI;
+    delete process.env.CI;
+    let code = -1;
+    try {
+      code = await main(['--auto-start-nexus', '--dry-run'], {
+        git: mockGit,
+        llm: mockLlm,
+        ensureDaemon,
+        getRepoRoot,
+      });
+    } finally {
+      if (original === undefined) {
+        delete process.env.CI;
+      } else {
+        process.env.CI = original;
+      }
+    }
 
     expect(code).toBe(0);
     expect(ensureDaemon).toHaveBeenCalled();

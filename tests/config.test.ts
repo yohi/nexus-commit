@@ -115,6 +115,26 @@ describe('loadConfig', () => {
     expect(cfg.useContext).toBe(false);
   });
 
+  it('autoStartNexus flag enables auto-start', () => {
+    const cfg = loadConfig({}, { ...baseFlags, autoStartNexus: true });
+    expect(cfg.autoStartNexus).toBe(true);
+  });
+
+  it('NEXUS_AUTO_START=1 enables auto-start', () => {
+    const cfg = loadConfig({ NEXUS_AUTO_START: '1' }, baseFlags);
+    expect(cfg.autoStartNexus).toBe(true);
+  });
+
+  it('autoStartNexus flag remains enabled when env is disabled', () => {
+    const cfg = loadConfig({ NEXUS_AUTO_START: '0' }, { ...baseFlags, autoStartNexus: true });
+    expect(cfg.autoStartNexus).toBe(true);
+  });
+
+  it('NEXUS_AUTO_START values other than 1 do not enable auto-start', () => {
+    expect(loadConfig({ NEXUS_AUTO_START: '0' }, baseFlags).autoStartNexus).toBe(false);
+    expect(loadConfig({ NEXUS_AUTO_START: 'true' }, baseFlags).autoStartNexus).toBe(false);
+  });
+
   it('diffMode flag propagates', () => {
     const cfg = loadConfig({}, { ...baseFlags, diffMode: 'all' });
     expect(cfg.diffMode).toBe('all');
