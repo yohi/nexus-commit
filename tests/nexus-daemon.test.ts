@@ -218,8 +218,7 @@ describe('ensureDaemon', () => {
 
   test('spawn したプロセスが即座に exit したらエラー', async () => {
     const fs = createMockFs();
-    const child = createMockChildProcess({ exitEarly: 1 });
-    const spawn = vi.fn(() => child);
+    const spawn = vi.fn(() => createMockChildProcess({ exitEarly: 1 }));
 
     await expect(
       ensureDaemon({
@@ -231,6 +230,7 @@ describe('ensureDaemon', () => {
         getFreePort: async () => 9090,
         findBinary: async () => ({ binary: '/bin/nexus', isNpxFallback: false }),
         logger: createMockLogger(),
+        readyIntervalMs: 10,
       }),
     ).rejects.toThrow('exited');
   });

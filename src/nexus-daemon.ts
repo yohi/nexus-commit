@@ -167,8 +167,6 @@ export async function ensureDaemon(options: EnsureDaemonOptions): Promise<{ port
     throw new Error(`Nexus daemon requires Node.js >= 24 (current: ${process.versions.node})`);
   }
 
-  const port = await getFreePort();
-
   let logFd: number | null = null;
   const logFile = env.NEXUS_LOG_FILE;
   if (logFile) {
@@ -181,45 +179,53 @@ export async function ensureDaemon(options: EnsureDaemonOptions): Promise<{ port
     }
   }
 
-  const child = spawn(binary, ['--port', String(port), '--project-root', repoRoot], {
-    detached: true,
-    stdio: logFd !== null ? ['ignore', logFd, logFd] : 'ignore',
-    env,
-  }) as ChildProcess;
+  const MAX_RETRIES = 3;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const port = await getFreePort();
 
-  child.unref();
+    const child = spawn(binary, ['--port', String(port), '--project-root', repoRoot], {
+      detached: true,
+      stdio: logFd !== null ? ['ignore', logFd, logFd] : 'ignore',
+      env,
+    }) as ChildProcess;
 
-  const abortController = new AbortController();
-  let exitError: Error | undefined;
-  const onExit = (code: number | null) => {
-    exitError = new Error(`Nexus daemon exited prematurely with code ${code}`);
-    abortController.abort();
-  };
-  const onError = (err: Error) => {
-    exitError = new Error(`Nexus daemon failed to start: ${err.message}`);
-    abortController.abort();
-  };
-  child.once('exit', onExit);
-  child.once('error', onError);
+    child.unref();
 
-  try {
-    await waitForDaemon(fetch, port, readyTimeoutMs, readyIntervalMs, abortController.signal);
-  } catch (err) {
-    if (exitError) {
-      throw exitError;
+    const abortController = new AbortController();
+    let exitError: Error | undefined;
+    const onExit = (code: number | null) => {
+      exitError = new Error(`Nexus daemon exited prematurely with code ${code}`);
+      abortController.abort();
+    };
+    const onError = (err: Error) => {
+      exitError = new Error(`Nexus daemon failed to start: ${err.message}`);
+      abortController.abort();
+    };
+    child.once('exit', onExit);
+    child.once('error', onError);
+
+    try {
+      await waitForDaemon(fetch, port, readyTimeoutMs, readyIntervalMs, abortController.signal);
+
+      const state: DaemonState = {
+        port,
+        pid: child.pid ?? 0,
+        startedAt: new Date().toISOString(),
+      };
+      await fs.writeFile(statePath, serializeDaemonState(state));
+
+      return { port };
+    } catch (err) {
+      const finalErr = exitError ?? err;
+      if (attempt === MAX_RETRIES) {
+        throw finalErr;
+      }
+      logger.warn(`ポート ${port} での起動に失敗しました (${errorToString(finalErr)})。再試行します...`);
+    } finally {
+      child.off('exit', onExit);
+      child.off('error', onError);
     }
-    throw err;
-  } finally {
-    child.off('exit', onExit);
-    child.off('error', onError);
   }
 
-  const state: DaemonState = {
-    port,
-    pid: child.pid ?? 0,
-    startedAt: new Date().toISOString(),
-  };
-  await fs.writeFile(statePath, serializeDaemonState(state));
-
-  return { port };
+  throw new Error('Unreachable');
 }
