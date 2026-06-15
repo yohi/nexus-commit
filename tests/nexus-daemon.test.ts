@@ -348,6 +348,41 @@ describe('ensureDaemon', () => {
 
     await vi.advanceTimersByTimeAsync(200);
     await expect(resultPromise).rejects.toThrow('ready');
+    expect(child.kill).toHaveBeenCalled();
+  });
+
+  test('ready 待ちに失敗した試行は再試行前にプロセスを終了する', async () => {
+    const fs = createMockFs();
+    const firstChild = createMockChildProcess({ pid: 54321 });
+    const secondChild = createMockChildProcess({ pid: 54322 });
+    const spawn = vi.fn().mockReturnValueOnce(firstChild).mockReturnValueOnce(secondChild);
+    const ports = [9090, 9091];
+
+    const resultPromise = ensureDaemon({
+      repoRoot,
+      env: {},
+      fs,
+      fetch: createMockFetch([
+        new Error('ECONNREFUSED'),
+        new Error('ECONNREFUSED'),
+        new Error('ECONNREFUSED'),
+        { ok: true, status: 200, statusText: 'OK', text: async () => '' },
+      ]),
+      spawn: spawn as unknown as typeof import('node:child_process').spawn,
+      getFreePort: async () => ports.shift() ?? 9091,
+      findBinary: async () => ({ binary: '/bin/nexus', isNpxFallback: false }),
+      logger: createMockLogger(),
+      readyTimeoutMs: 25,
+      readyIntervalMs: 10,
+      nodeVersion: '24.0.0',
+    });
+    resultPromise.catch(() => {});
+
+    await vi.advanceTimersByTimeAsync(200);
+    await resultPromise;
+
+    expect(firstChild.kill).toHaveBeenCalled();
+    expect(secondChild.kill).not.toHaveBeenCalled();
   });
 
   test('起動失敗時でも NEXUS_LOG_FILE の fd を閉じる', async () => {

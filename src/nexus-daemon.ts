@@ -259,12 +259,15 @@ export async function ensureDaemon(options: EnsureDaemonOptions): Promise<{ port
         return { port };
       } catch (err) {
         const finalErr = exitError ?? err;
+        if (attempt !== MAX_RETRIES) {
+          logger.warn(
+            `ポート ${port} での起動に失敗しました (${errorToString(finalErr)})。再試行します...`,
+          );
+        }
+        child.kill();
         if (attempt === MAX_RETRIES) {
           throw finalErr;
         }
-        logger.warn(
-          `ポート ${port} での起動に失敗しました (${errorToString(finalErr)})。再試行します...`,
-        );
       } finally {
         child.off('exit', onExit);
         child.off('error', onError);
