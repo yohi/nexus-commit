@@ -15,6 +15,7 @@ const mockConfig: Config = {
   lang: 'ja',
   maxTokens: 2000,
   diffMode: 'staged',
+  autoStartNexus: false,
 };
 
 const mockDeps = {
@@ -110,5 +111,63 @@ describe('runDoctor', () => {
     } finally {
       vi.doUnmock('../src/prompt-file.js');
     }
+  });
+
+  it('Nexus binary が解決できれば ok', async () => {
+    const deps = {
+      ...mockDeps,
+      findNexusBinary: vi
+        .fn()
+        .mockResolvedValue({ binary: '/usr/local/bin/nexus', isNpxFallback: false }),
+    };
+    const report = await runDoctor(mockConfig, deps);
+    const result = report.results.find((r) => r.title === 'Nexus binary');
+    expect(result?.status).toBe('ok');
+    expect(result?.detail).toContain('/usr/local/bin/nexus');
+  });
+
+  it('Nexus binary が解決できなくても warn', async () => {
+    const deps = {
+      ...mockDeps,
+      findNexusBinary: vi.fn().mockRejectedValue(new Error('not found')),
+    };
+    const report = await runDoctor(mockConfig, deps);
+    const result = report.results.find((r) => r.title === 'Nexus binary');
+    expect(result?.status).toBe('warn');
+  });
+
+  it('Embed model (nomic-embed-text) があれば ok', async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ models: [{ name: 'nomic-embed-text' }] }),
+    });
+    const report = await runDoctor(mockConfig, {
+      ...mockDeps,
+      fetch: fetch as unknown as typeof fetch,
+    });
+    const result = report.results.find((r) => r.title === 'Embed model (nomic-embed-text)');
+    expect(result?.status).toBe('ok');
+  });
+
+  it('Embed model (nomic-embed-text) がなければ warn', async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ models: [{ name: 'llama3' }] }),
+    });
+    const report = await runDoctor(mockConfig, {
+      ...mockDeps,
+      fetch: fetch as unknown as typeof fetch,
+    });
+    const result = report.results.find((r) => r.title === 'Embed model (nomic-embed-text)');
+    expect(result?.status).toBe('warn');
+  });
+
+  it('稼働中の daemon 状態を表示する', async () => {
+    const readDaemonState = vi.fn().mockResolvedValue({ port: 9090, pid: 12345 });
+    const report = await runDoctor(mockConfig, { ...mockDeps, readDaemonState });
+    const result = report.results.find((r) => r.title === 'Nexus daemon status');
+    expect(result?.status).toBe('ok');
+    expect(result?.detail).toContain('pid=12345');
+    expect(result?.detail).toContain('port=9090');
   });
 });
