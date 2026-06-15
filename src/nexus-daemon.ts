@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { spawn as defaultSpawn, type ChildProcess } from 'node:child_process';
 import { logger as defaultLogger } from './logger.js';
 import { findNexusBinary, type BinaryResolution } from './nexus-spawn.js';
@@ -14,6 +14,7 @@ export interface Logger {
 export interface FsLike {
   readFile(path: string, encoding: 'utf8'): Promise<string>;
   writeFile(path: string, content: string): Promise<void>;
+  mkdir(path: string, options: { recursive: boolean }): Promise<void>;
   unlink(path: string): Promise<void>;
   open(path: string, flags: string): Promise<number>;
 }
@@ -44,6 +45,7 @@ async function createDefaultFs(): Promise<FsLike> {
   return {
     readFile: (path, encoding) => fs.readFile(path, encoding) as Promise<string>,
     writeFile: (path, content) => fs.writeFile(path, content),
+    mkdir: (path, options) => fs.mkdir(path, options).then(() => {}),
     unlink: (path) => fs.unlink(path),
     open: (path, flags) => fs.open(path, flags).then((handle) => handle.fd),
   };
@@ -162,7 +164,7 @@ export async function ensureDaemon(options: EnsureDaemonOptions): Promise<{ port
     await fs.unlink(statePath).catch(() => {});
   }
 
-  const { binary, isNpxFallback } = await findBinary();
+  const { binary, argsPrefix, isNpxFallback } = await findBinary();
   if (isNpxFallback) {
     logger.warn(
       'nexus バイナリが見つからないため、npx @yohi/nexus を使用します。認証・依存関係のダウンロードに時間がかかる場合があります。',
@@ -190,11 +192,15 @@ export async function ensureDaemon(options: EnsureDaemonOptions): Promise<{ port
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     const port = await getFreePort();
 
-    const child = spawn(binary, ['--port', String(port), '--project-root', repoRoot], {
-      detached: true,
-      stdio: logFd !== null ? ['ignore', logFd, logFd] : 'ignore',
-      env,
-    }) as ChildProcess;
+    const child = spawn(
+      binary,
+      [...(argsPrefix ?? []), '--port', String(port), '--project-root', repoRoot],
+      {
+        detached: true,
+        stdio: logFd !== null ? ['ignore', logFd, logFd] : 'ignore',
+        env,
+      },
+    ) as ChildProcess;
 
     child.unref();
 
@@ -219,6 +225,7 @@ export async function ensureDaemon(options: EnsureDaemonOptions): Promise<{ port
         pid: child.pid ?? 0,
         startedAt: new Date().toISOString(),
       };
+      await fs.mkdir(dirname(statePath), { recursive: true });
       await fs.writeFile(statePath, serializeDaemonState(state));
 
       return { port };

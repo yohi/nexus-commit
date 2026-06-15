@@ -4,6 +4,7 @@ import { execFile } from 'node:child_process';
 
 export interface BinaryResolution {
   readonly binary: string;
+  readonly argsPrefix?: readonly string[];
   readonly isNpxFallback: boolean;
 }
 
@@ -56,6 +57,6 @@ export async function findNexusBinary(
     const pathBin = await lookupPath('nexus');
     return { binary: pathBin, isNpxFallback: false };
   } catch {
-    return { binary: 'npx @yohi/nexus', isNpxFallback: true };
+    return { binary: 'npx', argsPrefix: ['@yohi/nexus'], isNpxFallback: true };
   }
 }

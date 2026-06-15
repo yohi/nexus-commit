@@ -31,7 +31,9 @@ function createMockFetch(
   return fn;
 }
 
-function createMockFs(initial: Record<string, string> = {}): FsLike {
+function createMockFs(initial: Record<string, string> = {}): FsLike & {
+  mkdir: ReturnType<typeof vi.fn>;
+} {
   const files = new Map<string, string>(Object.entries(initial));
   let fdCounter = 10;
   return {
@@ -50,6 +52,7 @@ function createMockFs(initial: Record<string, string> = {}): FsLike {
     unlink: vi.fn(async (path: string) => {
       files.delete(path);
     }),
+    mkdir: vi.fn(async () => {}),
     open: vi.fn(async (_path: string, _flags: string) => {
       const fd = fdCounter++;
       return fd;
@@ -190,7 +193,34 @@ describe('ensureDaemon', () => {
       expect.objectContaining({ detached: true, stdio: 'ignore' }),
     );
     expect(result.port).toBe(9090);
+    expect(fs.mkdir).toHaveBeenCalledWith('/repo/.nexus', { recursive: true });
     expect(fs.writeFile).toHaveBeenCalledWith(statePath, expect.stringContaining('"port":9090'));
+  });
+
+  test('npx フォールバックは実行ファイルとパッケージ引数を分離して起動する', async () => {
+    const fs = createMockFs();
+    const child = createMockChildProcess({ pid: 54321 });
+    const spawn = vi.fn(() => child);
+    const resultPromise = ensureDaemon({
+      repoRoot,
+      env: {},
+      fs,
+      fetch: createMockFetch([{ ok: true, status: 200, statusText: 'OK', text: async () => '' }]),
+      spawn: spawn as unknown as typeof import('node:child_process').spawn,
+      getFreePort: async () => 9090,
+      findBinary: async () => ({ binary: 'npx', argsPrefix: ['@yohi/nexus'], isNpxFallback: true }),
+      logger: createMockLogger(),
+      readyIntervalMs: 10,
+    });
+
+    await vi.advanceTimersByTimeAsync(100);
+    await resultPromise;
+
+    expect(spawn).toHaveBeenCalledWith(
+      'npx',
+      ['@yohi/nexus', '--port', '9090', '--project-root', repoRoot],
+      expect.objectContaining({ detached: true, stdio: 'ignore' }),
+    );
   });
 
   test('状態ファイルがなければ新規起動する', async () => {

@@ -28,6 +28,38 @@ const mockDeps = {
 };
 
 describe('runDoctor', () => {
+  it('Node.js 22 では auto-start 無効なら Node.js version を ok にする', async () => {
+    vi.resetModules();
+    vi.doMock('node:process', async () => {
+      const actual = await vi.importActual<typeof import('node:process')>('node:process');
+      return { ...actual, version: 'v22.11.0' };
+    });
+    try {
+      const { runDoctor: run } = await import('../src/doctor.js');
+      const report = await run({ ...mockConfig, autoStartNexus: false }, mockDeps);
+      const nodeResult = report.results.find((r) => r.title === 'Node.js version');
+      expect(nodeResult?.status).toBe('ok');
+    } finally {
+      vi.doUnmock('node:process');
+    }
+  });
+
+  it('Node.js 22 では auto-start 有効なら Node.js version を fail にする', async () => {
+    vi.resetModules();
+    vi.doMock('node:process', async () => {
+      const actual = await vi.importActual<typeof import('node:process')>('node:process');
+      return { ...actual, version: 'v22.11.0' };
+    });
+    try {
+      const { runDoctor: run } = await import('../src/doctor.js');
+      const report = await run({ ...mockConfig, autoStartNexus: true }, mockDeps);
+      const nodeResult = report.results.find((r) => r.title === 'Node.js version');
+      expect(nodeResult?.status).toBe('fail');
+    } finally {
+      vi.doUnmock('node:process');
+    }
+  });
+
   it('should return a successful report when all checks pass', async () => {
     const report = await runDoctor(mockConfig, mockDeps);
     expect(report.exitCode).toBe(0);

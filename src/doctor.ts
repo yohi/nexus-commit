@@ -98,12 +98,15 @@ export async function runDoctor(config: Config, deps: DoctorDeps): Promise<Docto
   // 1. Node.js version
   const majorStr = nodeVersion.startsWith('v') ? nodeVersion.slice(1) : nodeVersion;
   const major = parseInt(majorStr.split('.')[0] || '0', 10);
+  const supportsCliRuntime = major >= 22;
+  const supportsAutoStart = major >= 24;
   results.push({
     title: 'Node.js version',
-    status: major >= 24 ? 'ok' : 'fail',
+    status: supportsCliRuntime && (!config.autoStartNexus || supportsAutoStart) ? 'ok' : 'fail',
     detail: nodeVersion,
-    hint:
-      major < 24
+    hint: !supportsCliRuntime
+      ? 'Node.js 22+ is required. Please upgrade.'
+      : config.autoStartNexus && !supportsAutoStart
         ? 'Node.js 24+ is required to auto-start Nexus daemon. Please upgrade.'
         : undefined,
   });

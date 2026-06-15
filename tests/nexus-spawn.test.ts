@@ -73,14 +73,16 @@ describe('findNexusBinary', () => {
       },
       () => false,
     );
-    expect(result.binary).toBe('npx @yohi/nexus');
+    expect(result.binary).toBe('npx');
+    expect(result.argsPrefix).toEqual(['@yohi/nexus']);
     expect(result.isNpxFallback).toBe(true);
   });
 
   test('PATH 検索に失敗しても npx フォールバックする', async () => {
     const lookup = vi.fn().mockRejectedValue(new Error('not found'));
     const result = await findNexusBinary({}, '/repo', lookup, () => false);
-    expect(result.binary).toBe('npx @yohi/nexus');
+    expect(result.binary).toBe('npx');
+    expect(result.argsPrefix).toEqual(['@yohi/nexus']);
     expect(result.isNpxFallback).toBe(true);
   });
 });
