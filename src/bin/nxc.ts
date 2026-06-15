@@ -5,7 +5,7 @@ import * as clack from '@clack/prompts';
 import { getFlagWarnings, parseFlags, type Flags } from '../flags.js';
 import { loadConfig } from '../config.js';
 import { logger } from '../logger.js';
-import { NodeGitClient, NoopGitClient } from '../git.js';
+import { NodeGitClient, NoopGitClient, getRepoRoot } from '../git.js';
 import { HttpNexusClient } from '../nexus-client.js';
 import { OpenAICompatibleLlmClient } from '../llm.js';
 import { extract as extractKeywords } from '../keywords.js';
@@ -14,6 +14,8 @@ import { build as buildPrompt } from '../prompt.js';
 import { loadPromptFile } from '../prompt-file.js';
 import { countTokens, PROMPT_SUFFIX_MAX_TOKENS, truncateToTokens } from '../tokenizer.js';
 import type { Config, GitClient, LlmClientPort, NexusClientPort, NexusResult } from '../types.js';
+import type { EnsureDaemonOptions } from '../nexus-daemon.js';
+import { ensureDaemon } from '../nexus-daemon.js';
 import pkg from '../../package.json' with { type: 'json' };
 
 const HELP_TEXT = `Usage: nxc [options]
@@ -26,6 +28,7 @@ Options:
   --unstaged     Target unstaged diff
   --all          Target both staged + unstaged
   --doctor       Run doctor mode checks
+  --auto-start-nexus  Automatically start a local Nexus daemon if needed
   --json         Output in JSON format (works with --doctor)
   --lang <ja|en> Output language (default: ja)
   --model <name> Override LLM model name
@@ -45,20 +48,56 @@ interface Deps {
   git: GitClient;
   nexus: NexusClientPort;
   llm: LlmClientPort;
+  ensureDaemon?: (options: EnsureDaemonOptions) => Promise<{ port: number }>;
+  getRepoRoot?: () => Promise<string>;
 }
 
 function createDeps(
   config: Config,
   overrides?: Partial<Deps>,
-  options: { skipGit?: boolean } = {},
+  options: { skipGit?: boolean; nexusUrl?: string } = {},
 ): Deps {
+  const nexusUrl = options.nexusUrl ?? config.nexusUrl;
   return {
     git: options.skipGit
       ? (overrides?.git ?? new NoopGitClient())
       : (overrides?.git ?? new NodeGitClient()),
-    nexus: overrides?.nexus ?? new HttpNexusClient(config.nexusUrl),
+    nexus: overrides?.nexus ?? new HttpNexusClient(nexusUrl),
     llm: overrides?.llm ?? new OpenAICompatibleLlmClient(config.llmUrl, config.llmApiKey),
   };
+}
+
+function isCi(): boolean {
+  return process.env.CI === 'true' || process.env.CI === '1';
+}
+
+async function tryAutoStartNexus(config: Config, overrides?: Partial<Deps>): Promise<string> {
+  if (process.env.NEXUS_API_URL) {
+    return config.nexusUrl;
+  }
+  if (!config.autoStartNexus) {
+    return config.nexusUrl;
+  }
+  if (config.nonInteractive || isCi()) {
+    logger.warn(
+      '--auto-start-nexus は対話モードでのみ有効です。CI/非対話環境では既存の Nexus サーバーに接続します。',
+    );
+    return config.nexusUrl;
+  }
+
+  try {
+    const repoRoot = await (overrides?.getRepoRoot ?? getRepoRoot)();
+    const { port } = await (overrides?.ensureDaemon ?? ensureDaemon)({
+      repoRoot,
+      env: process.env,
+      nodeVersion: process.versions.node,
+    });
+    return `http://127.0.0.1:${port}`;
+  } catch (err) {
+    logger.warn(`Nexus daemon の自動起動に失敗しました: ${errorToString(err)}`);
+    logger.warn('   既存の Nexus サーバーまたはコンテキストなしで続行します。');
+    return config.nexusUrl;
+  }
 }
 
 async function generate(
@@ -320,8 +359,8 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
     logger.warn('   デフォルトプロンプトで続行します。');
   }
 
-  const deps = createDeps(config, overrides);
-
+  const nexusUrl = await tryAutoStartNexus(config, overrides);
+  const deps = createDeps(config, overrides, { nexusUrl });
   try {
     if (!(await deps.git.isRepo())) {
       logger.error('Not a git repository');
@@ -357,10 +396,7 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
 
 let _isMain = false;
 try {
-  _isMain = !!(
-    process.argv[1] &&
-    realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
-  );
+  _isMain = !!(process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url));
 } catch {
   // realpathSync can throw ENOENT if the path no longer exists
 }

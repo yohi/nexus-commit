@@ -15,6 +15,7 @@ export interface Flags {
   version: boolean;
   doctor: boolean;
   json: boolean;
+  autoStartNexus: boolean;
 }
 
 export function getFlagWarnings(flags: Flags): string[] {
@@ -51,6 +52,7 @@ export function parseFlags(argv: string[]): Flags {
   flags.model = undefined;
   flags.doctor = false;
   flags.json = false;
+  flags.autoStartNexus = false;
 
   let diffModeExplicitlySet = false;
 
@@ -93,6 +95,9 @@ export function parseFlags(argv: string[]): Flags {
         break;
       case '--json':
         flags.json = true;
+        break;
+      case '--auto-start-nexus':
+        flags.autoStartNexus = true;
         break;
       case '-h':
       case '--help':

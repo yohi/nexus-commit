@@ -92,3 +92,8 @@ export class NoopGitClient implements GitClient {
     throw new Error('commit: Git operation is disabled');
   }
 }
+
+export async function getRepoRoot(): Promise<string> {
+  const out = await runGit(['rev-parse', '--show-toplevel']);
+  return out.trim();
+}

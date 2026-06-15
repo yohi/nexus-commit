@@ -97,5 +97,6 @@ export function loadConfig(env: NodeJS.ProcessEnv, flags: Flags): Config {
     dryRun: flags.dryRun,
     nonInteractive: flags.nonInteractive,
     useContext: flags.useContext,
+    autoStartNexus: flags.autoStartNexus || env.NEXUS_AUTO_START === '1',
   };
 }

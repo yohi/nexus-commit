@@ -11,6 +11,7 @@ const baseFlags: Flags = {
   version: false,
   doctor: false,
   json: false,
+  autoStartNexus: false,
 };
 
 describe('loadConfig', () => {
@@ -112,6 +113,34 @@ describe('loadConfig', () => {
   it('--no-context propagates to useContext:false', () => {
     const cfg = loadConfig({}, { ...baseFlags, useContext: false });
     expect(cfg.useContext).toBe(false);
+  });
+
+  it('autoStartNexus flag enables auto-start', () => {
+    const cfg = loadConfig({}, { ...baseFlags, autoStartNexus: true });
+    expect(cfg.autoStartNexus).toBe(true);
+  });
+
+  it('NEXUS_AUTO_START=1 enables auto-start', () => {
+    const cfg = loadConfig({ NEXUS_AUTO_START: '1' }, baseFlags);
+    expect(cfg.autoStartNexus).toBe(true);
+  });
+
+  it('autoStartNexus flag remains enabled when env is disabled', () => {
+    const cfg = loadConfig({ NEXUS_AUTO_START: '0' }, { ...baseFlags, autoStartNexus: true });
+    expect(cfg.autoStartNexus).toBe(true);
+  });
+
+  it('autoStartNexus remains enabled when both flag and env are enabled', () => {
+    const cfg = loadConfig({ NEXUS_AUTO_START: '1' }, { ...baseFlags, autoStartNexus: true });
+    expect(cfg.autoStartNexus).toBe(true);
+  });
+
+  it('NEXUS_AUTO_START=0 does not enable auto-start', () => {
+    expect(loadConfig({ NEXUS_AUTO_START: '0' }, baseFlags).autoStartNexus).toBe(false);
+  });
+
+  it('NEXUS_AUTO_START=true does not enable auto-start', () => {
+    expect(loadConfig({ NEXUS_AUTO_START: 'true' }, baseFlags).autoStartNexus).toBe(false);
   });
 
   it('diffMode flag propagates', () => {

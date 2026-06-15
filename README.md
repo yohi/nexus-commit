@@ -54,16 +54,16 @@ graph LR
 ### 🛠 使い方 (人間向け)
 
 #### 前提条件
-- Node.js 22+
+- Node.js 22+（`nxc` 自体は Node.js 22 で動作、`--auto-start-nexus` 使用時は Nexus daemon 起動のため Node.js 24+ が必要）
 - ローカルLLMエンドポイント (Ollama 等)
-  - 推奨モデル: `qwen2.5-coder:1.5b` (軽量・高速) または `qwen2.5-coder:3b`
+- 推奨モデル: `qwen2.5-coder:1.5b` (軽量・高速) または `qwen2.5-coder:3b`
 - (任意) Nexus 検索サーバー
 
 #### セットアップ・実行方法
 
-1. **Nexus サーバーの起動 (別ターミナルで実行)**
+1. **Nexus サーバーの起動**
 
-   Nexus は以下のいずれかの方法で起動できます。nexus-commit 連携時には **HTTPモード**を推奨します。
+   以下のいずれかの方法で Nexus を起動できます。nexus-commit 連携時には **HTTPモード**を推奨します。
 
    ```bash
    # HTTP モード (nexus-commit 連携推奨)
@@ -73,6 +73,7 @@ graph LR
    nexus
    ```
 
+   または、`--auto-start-nexus` フラグ（または `NEXUS_AUTO_START=1`）を指定すると、`nxc` 実行時に Nexus daemon を自動的に起動・再利用します。対話モードでのみ有効で、ポート番号は自動的に管理されます。手動で終了させる場合は `kill $(node -p "require('./.nexus/nxc-daemon.json').pid")` を実行してください。
 2. **nexus-commit の実行**
 
    Nexus サーバー起動後、以下のいずれかの方法で実行できます。
@@ -146,14 +147,11 @@ npx @yohi/nexus-commit を使って、変更内容に基づいた Conventional C
 
 | 変数名 | デフォルト値 | 説明 |
 | :--- | :--- | :--- |
-| `NEXUS_API_URL` | `http://localhost:8080` | **Nexus サーバーのベースURL**<br>ローカルインデックス検索を行う Nexus サーバーの場所を指定します。 |
+| `NEXUS_API_URL` | `http://localhost:8080` | **Nexus サーバーのベースURL**<br>ローカルインデックス検索を行う Nexus サーバーの場所を指定します。明示的に指定すると `--auto-start-nexus` は無効になります。 |
+| `NEXUS_AUTO_START` | `0` | **`1` に設定すると、`nxc` 実行時に必要に応じて Nexus daemon を自動起動します**（opt-in）。対話モードでのみ有効で、CI/非対話環境では無視されます。 |
+| `NEXUS_BIN` | （自動解決） | **Nexus 実行ファイルのパス**<br>明示指定時はそれを優先します。未指定時は `node_modules/.bin/nexus`、PATH、`npx @yohi/nexus` の順で解決します。 |
+| `NEXUS_LOG_FILE` | （未設定） | **Nexus daemon のログ出力先ファイルパス**<br>設定すると、自動起動した子プロセスの stdout/stderr を指定ファイルに追記します。 |
 | `NEXUS_COMMIT_LLM_URL` | `http://localhost:11434/v1` | **LLM API のエンドポイント**<br>OpenAI 互換プロトコルを使用します。Ollama の場合は通常 `http://localhost:11434/v1` となります。**注意：`/api/generate` ではなく `/v1` を指定してください。** |
-| `NEXUS_COMMIT_LLM_MODEL` | `qwen2.5-coder:1.5b` | **使用する LLM モデル名**<br>ローカルにプル済みのモデル名を指定します。軽量・高速な `1.5b` クラスを推奨します。 |
-| `NEXUS_COMMIT_LLM_API_KEY` | `ollama` | **LLM API キー**<br>ローカル LLM の場合は任意の文字列で構いません。 |
-| `NEXUS_COMMIT_LANG` | `ja` | **出力言語**<br>`ja` (日本語) または `en` (英語) を指定できます。 |
-| `NEXUS_COMMIT_MAX_TOKENS` | `8192` | **最大トークン数**<br>プロンプト（diff + コンテキスト）の合計上限。 js-tiktoken (cl100k_base) で計算されます。 |
-| `NEXUS_COMMIT_NEXUS_TIMEOUT_MS` | `5000` | **Nexus 通信のタイムアウト**<br>ミリ秒単位。Nexus が重い場合やネットワーク越しの場合に調整してください。 |
-| `NEXUS_COMMIT_LLM_TIMEOUT_MS` | `60000` | **LLM 生成のタイムアウト**<br>ミリ秒単位。巨大な diff や低速なマシンでの生成時に調整してください。 |
 
 
 ### カスタムプロンプト (オプション)
@@ -167,6 +165,7 @@ npx @yohi/nexus-commit を使って、変更内容に基づいた Conventional C
 | `--staged` | ステージングされた変更を対象にする（デフォルト） |
 | `--unstaged` | 未ステージングの変更を対象にする |
 | `--all` | ステージング・未ステージングの両方を対象にする |
+| `--auto-start-nexus` | 必要に応じて Nexus daemon を自動起動する（opt-in） |
 | `--dry-run` | コミットを実行せず、メッセージを出力する |
 | `--non-interactive` | 対話的な確認をスキップして即座に実行する |
 | `--doctor` | 診断モードを実行して接続状況を確認する |
