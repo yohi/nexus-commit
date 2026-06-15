@@ -155,6 +155,7 @@ describe('ensureDaemon', () => {
       fs,
       fetch: mockFetch,
       logger: createMockLogger(),
+      nodeVersion: '24.0.0',
     });
     expect(result.port).toBe(8080);
     expect(fs.writeFile).not.toHaveBeenCalled();
@@ -181,7 +182,9 @@ describe('ensureDaemon', () => {
       findBinary: async () => ({ binary: '/bin/nexus', isNpxFallback: false }),
       logger: createMockLogger(),
       readyIntervalMs: 10,
+      nodeVersion: '24.0.0',
     });
+    resultPromise.catch(() => {});
 
     await vi.advanceTimersByTimeAsync(100);
     const result = await resultPromise;
@@ -211,6 +214,7 @@ describe('ensureDaemon', () => {
       findBinary: async () => ({ binary: 'npx', argsPrefix: ['@yohi/nexus'], isNpxFallback: true }),
       logger: createMockLogger(),
       readyIntervalMs: 10,
+      nodeVersion: '24.0.0',
     });
 
     await vi.advanceTimersByTimeAsync(100);
@@ -237,6 +241,7 @@ describe('ensureDaemon', () => {
       findBinary: async () => ({ binary: '/bin/nexus', isNpxFallback: false }),
       logger: createMockLogger(),
       readyIntervalMs: 10,
+      nodeVersion: '24.0.0',
     });
 
     await vi.advanceTimersByTimeAsync(100);
@@ -244,6 +249,56 @@ describe('ensureDaemon', () => {
 
     expect(result.port).toBe(9090);
     expect(fs.writeFile).toHaveBeenCalledWith(statePath, expect.stringContaining('"port":9090'));
+  });
+
+  test('spawn したプロセスの pid が取得できなければ状態ファイルを書き込まない', async () => {
+    const fs = createMockFs();
+    const child = createMockChildProcess({ pid: 54321 });
+    Object.defineProperty(child, 'pid', { value: undefined });
+    const spawn = vi.fn(() => child);
+    const resultPromise = ensureDaemon({
+      repoRoot,
+      env: {},
+      fs,
+      fetch: createMockFetch([{ ok: true, status: 200, statusText: 'OK', text: async () => '' }]),
+      spawn: spawn as unknown as typeof import('node:child_process').spawn,
+      getFreePort: async () => 9090,
+      findBinary: async () => ({ binary: '/bin/nexus', isNpxFallback: false }),
+      logger: createMockLogger(),
+      readyIntervalMs: 10,
+      nodeVersion: '24.0.0',
+    });
+
+    const assertion = expect(resultPromise).rejects.toThrow('no PID');
+    await vi.advanceTimersByTimeAsync(100);
+    await assertion;
+    expect(fs.writeFile).not.toHaveBeenCalled();
+  });
+
+  test('ready 待ちの成功後に abort listener を削除する', async () => {
+    const addSpy = vi.spyOn(AbortSignal.prototype, 'addEventListener');
+    const removeSpy = vi.spyOn(AbortSignal.prototype, 'removeEventListener');
+    const fs = createMockFs();
+    const child = createMockChildProcess({ pid: 54321 });
+    const resultPromise = ensureDaemon({
+      repoRoot,
+      env: {},
+      fs,
+      fetch: createMockFetch([{ ok: true, status: 200, statusText: 'OK', text: async () => '' }]),
+      spawn: vi.fn(() => child) as unknown as typeof import('node:child_process').spawn,
+      getFreePort: async () => 9090,
+      findBinary: async () => ({ binary: '/bin/nexus', isNpxFallback: false }),
+      logger: createMockLogger(),
+      readyIntervalMs: 10,
+      nodeVersion: '24.0.0',
+    });
+
+    await vi.advanceTimersByTimeAsync(100);
+    await resultPromise;
+
+    expect(removeSpy).toHaveBeenCalledTimes(addSpy.mock.calls.length);
+    addSpy.mockRestore();
+    removeSpy.mockRestore();
   });
 
   test('spawn したプロセスが即座に exit したらエラー', async () => {
@@ -261,6 +316,7 @@ describe('ensureDaemon', () => {
         findBinary: async () => ({ binary: '/bin/nexus', isNpxFallback: false }),
         logger: createMockLogger(),
         readyIntervalMs: 10,
+        nodeVersion: '24.0.0',
       }),
     ).rejects.toThrow('exited');
   });
@@ -281,6 +337,7 @@ describe('ensureDaemon', () => {
       logger: createMockLogger(),
       readyTimeoutMs: 50,
       readyIntervalMs: 10,
+      nodeVersion: '24.0.0',
     });
 
     // Attach a temporary catch handler to suppress Node's unhandled-rejection
@@ -305,6 +362,7 @@ describe('ensureDaemon', () => {
       findBinary: async () => ({ binary: '/bin/nexus', isNpxFallback: false }),
       logger: createMockLogger(),
       readyIntervalMs: 10,
+      nodeVersion: '24.0.0',
     });
 
     await vi.advanceTimersByTimeAsync(100);
@@ -337,6 +395,7 @@ describe('ensureDaemon', () => {
       findBinary: async () => ({ binary: '/bin/nexus', isNpxFallback: false }),
       logger,
       readyIntervalMs: 10,
+      nodeVersion: '24.0.0',
     });
 
     await vi.advanceTimersByTimeAsync(100);

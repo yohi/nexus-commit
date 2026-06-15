@@ -30,6 +30,7 @@ export interface EnsureDaemonOptions {
   logger?: Logger;
   readyTimeoutMs?: number;
   readyIntervalMs?: number;
+  nodeVersion?: string;
 }
 
 const DEFAULT_READY_TIMEOUT_MS = 30_000;
@@ -100,8 +101,24 @@ function waitForDaemon(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const start = Date.now();
+    let settled = false;
+    const cleanup = () => {
+      abortSignal?.removeEventListener('abort', onAbort);
+    };
+    const resolveOnce = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve();
+    };
+    const rejectOnce = (err: Error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(err);
+    };
     const onAbort = () => {
-      reject(new Error('Nexus daemon start aborted'));
+      rejectOnce(new Error('Nexus daemon start aborted'));
     };
     abortSignal?.addEventListener('abort', onAbort);
 
@@ -110,7 +127,7 @@ function waitForDaemon(
       await Promise.resolve();
       const elapsed = Date.now() - start;
       if (elapsed >= timeoutMs) {
-        reject(
+        rejectOnce(
           new Error(`Nexus daemon did not become ready on port ${port} within ${timeoutMs}ms`),
         );
         return;
@@ -123,17 +140,13 @@ function waitForDaemon(
           abortSignal,
         )
       ) {
-        resolve();
+        resolveOnce();
         return;
       }
       setTimeout(check, currentIntervalMs);
       currentIntervalMs = Math.min(currentIntervalMs * 1.5, 5000);
     };
     setTimeout(check, 0);
-
-    return () => {
-      abortSignal?.removeEventListener('abort', onAbort);
-    };
   });
 }
 
@@ -149,6 +162,7 @@ export async function ensureDaemon(options: EnsureDaemonOptions): Promise<{ port
     logger = defaultLogger,
     readyTimeoutMs = DEFAULT_READY_TIMEOUT_MS,
     readyIntervalMs = DEFAULT_READY_INTERVAL_MS,
+    nodeVersion = process.versions.node,
   } = options;
 
   const statePath = getDaemonStatePath(repoRoot);
@@ -171,9 +185,9 @@ export async function ensureDaemon(options: EnsureDaemonOptions): Promise<{ port
     );
   }
 
-  const nodeMajor = parseInt(process.versions.node.split('.')[0] ?? '0', 10);
+  const nodeMajor = parseInt(nodeVersion.split('.')[0] ?? '0', 10);
   if (nodeMajor < 24) {
-    throw new Error(`Nexus daemon requires Node.js >= 24 (current: ${process.versions.node})`);
+    throw new Error(`Nexus daemon requires Node.js >= 24 (current: ${nodeVersion})`);
   }
 
   let logFd: number | null = null;
@@ -220,9 +234,13 @@ export async function ensureDaemon(options: EnsureDaemonOptions): Promise<{ port
     try {
       await waitForDaemon(fetch, port, readyTimeoutMs, readyIntervalMs, abortController.signal);
 
+      if (child.pid === undefined) {
+        throw new Error('Nexus daemon process has no PID');
+      }
+
       const state: DaemonState = {
         port,
-        pid: child.pid ?? 0,
+        pid: child.pid,
         startedAt: new Date().toISOString(),
       };
       await fs.mkdir(dirname(statePath), { recursive: true });
