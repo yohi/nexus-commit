@@ -61,7 +61,15 @@ describe('runDoctor', () => {
   });
 
   it('should return a successful report when all checks pass', async () => {
-    const report = await runDoctor(mockConfig, mockDeps);
+    const deps = {
+      ...mockDeps,
+      findNexusBinary: vi.fn().mockResolvedValue({ binary: '/bin/nexus', isNpxFallback: false }),
+      fetch: vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ models: [{ name: 'nomic-embed-text' }] }),
+      } as Response),
+    };
+    const report = await runDoctor(mockConfig, deps);
     expect(report.exitCode).toBe(0);
     expect(report.results.every((r) => r.status === 'ok' || r.status === 'skip')).toBe(true);
   });

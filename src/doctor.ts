@@ -20,7 +20,10 @@ export interface DoctorDeps {
   readonly llm: LlmClientPort;
   readonly cwd?: string;
   readonly findNexusBinary?: (env: NodeJS.ProcessEnv, cwd: string) => Promise<BinaryResolution>;
-  readonly readDaemonState?: (cwd: string) => Promise<{ port: number; pid: number } | null>;
+  readonly readDaemonState?: (
+    cwd: string,
+    fetchImpl: typeof globalThis.fetch,
+  ) => Promise<{ port: number; pid: number } | null>;
   readonly fetch?: typeof globalThis.fetch;
 }
 
@@ -29,7 +32,10 @@ export interface DoctorReport {
   readonly exitCode: 0 | 4;
 }
 
-async function defaultReadDaemonState(cwd: string): Promise<{ port: number; pid: number } | null> {
+async function defaultReadDaemonState(
+  cwd: string,
+  fetchImpl: typeof globalThis.fetch,
+): Promise<{ port: number; pid: number } | null> {
   try {
     const fs = await import('node:fs/promises');
     const content = await fs.readFile(getDaemonStatePath(cwd), 'utf8');
@@ -39,7 +45,7 @@ async function defaultReadDaemonState(cwd: string): Promise<{ port: number; pid:
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 1000);
     try {
-      await fetch(`http://127.0.0.1:${state.port}/api/search`, {
+      await fetchImpl(`http://127.0.0.1:${state.port}/api/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: '', files: [] }),
@@ -233,6 +239,7 @@ export async function runDoctor(config: Config, deps: DoctorDeps): Promise<Docto
   // 8. Daemon status
   const daemonState = await (deps.readDaemonState ?? defaultReadDaemonState)(
     deps.cwd ?? process.cwd(),
+    deps.fetch ?? globalThis.fetch,
   );
   if (daemonState) {
     results.push({

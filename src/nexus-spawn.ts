@@ -14,6 +14,11 @@ export interface ResolveNexusBinaryInputs {
   readonly pathBin?: string;
 }
 
+/**
+ * Returns a display-only command string such as `npx @yohi/nexus`.
+ * Use this for logs and diagnostics; use findNexusBinary for spawn-ready
+ * binary resolution with separated executable and argument prefix.
+ */
 export function resolveNexusBinary(inputs: ResolveNexusBinaryInputs): string {
   return inputs.envBin ?? inputs.localBin ?? inputs.pathBin ?? 'npx @yohi/nexus';
 }
