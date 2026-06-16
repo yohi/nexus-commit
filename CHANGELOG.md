@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.1](https://github.com/yohi/nexus-commit/compare/v1.4.0...v1.4.1) (2026-06-16)
+
+
+### Bug Fixes
+
+* --auto-start-nexus の信頼性改善（URL誤表示・タイムアウト枯渇・dead/busy 誤判定） ([b721022](https://github.com/yohi/nexus-commit/commit/b721022f3d2477505699c7bd335e1f6461ffa6d9))
+* **doctor:** busy状態のdaemonをwarnで表示するよう修正 ([d5d1a3e](https://github.com/yohi/nexus-commit/commit/d5d1a3e458e848a00c65d3cae84b14469dd26c6a))
+* **doctor:** daemon hint の文言をフェーズ非依存な表現に修正 ([e1cbab2](https://github.com/yohi/nexus-commit/commit/e1cbab24cc7858596910912fc43483b129fa439e))
+* **nexus-daemon:** daemon の dead/busy を区別し indexReady を返す ([ba26f3f](https://github.com/yohi/nexus-commit/commit/ba26f3fe489eac21212255d0f78d7975c95a5fce))
+* **nxc:** auto-start 時の URL 誤表示・タイムアウト枯渇・コンテキストスキップを修正 ([37c5238](https://github.com/yohi/nexus-commit/commit/37c5238015905aaa62dd6b580348ac368dce2252))
+
 ## [1.4.0](https://github.com/yohi/nexus-commit/compare/v1.3.0...v1.4.0) (2026-06-15)
 
 
