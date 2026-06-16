@@ -23,7 +23,7 @@ export interface DoctorDeps {
   readonly readDaemonState?: (
     cwd: string,
     fetchImpl: typeof globalThis.fetch,
-  ) => Promise<{ port: number; pid: number } | null>;
+  ) => Promise<{ port: number; pid: number; busy?: boolean } | null>;
   readonly fetch?: typeof globalThis.fetch;
 }
 
@@ -35,7 +35,7 @@ export interface DoctorReport {
 async function defaultReadDaemonState(
   cwd: string,
   fetchImpl: typeof globalThis.fetch,
-): Promise<{ port: number; pid: number } | null> {
+): Promise<{ port: number; pid: number; busy?: boolean } | null> {
   try {
     const fs = await import('node:fs/promises');
     const content = await fs.readFile(getDaemonStatePath(cwd), 'utf8');
@@ -52,7 +52,11 @@ async function defaultReadDaemonState(
         signal: controller.signal,
       });
       return { port: state.port, pid: state.pid };
-    } catch {
+    } catch (err) {
+      // AbortError はタイムアウト = daemon 起動中（インデックス構築ビジー）と判断する
+      if (err instanceof Error && err.name === 'AbortError') {
+        return { port: state.port, pid: state.pid, busy: true };
+      }
       return null;
     } finally {
       clearTimeout(timer);
@@ -244,8 +248,11 @@ export async function runDoctor(config: Config, deps: DoctorDeps): Promise<Docto
   if (daemonState) {
     results.push({
       title: 'Nexus daemon status',
-      status: 'ok',
-      detail: `pid=${daemonState.pid}, port=${daemonState.port}`,
+      status: daemonState.busy ? 'warn' : 'ok',
+      detail: daemonState.busy
+        ? `pid=${daemonState.pid}, port=${daemonState.port} (インデックス構築中)`
+        : `pid=${daemonState.pid}, port=${daemonState.port}`,
+      hint: 'Nexus と LLM 生成は同じ Ollama を共有しています。競合が発生した場合は生成が遅くなることがあります。詳細は README のトラブルシューティングを参照。',
     });
   } else {
     results.push({

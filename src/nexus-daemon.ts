@@ -75,12 +75,20 @@ async function readDaemonStateFile(fs: FsLike, path: string): Promise<DaemonStat
   }
 }
 
-async function isDaemonAlive(
+type DaemonProbeStatus = 'ready' | 'busy' | 'dead';
+
+/**
+ * daemon の /api/search を叩いて状態を判定する。
+ * - HTTP 応答あり (400 等のエラー応答を含む) = 'ready' (サーバー稼働かつ応答可能)
+ * - タイムアウト (AbortError) = 'busy' (TCP は生存するが応答が遅い。初回インデックス構築中など)
+ * - 接続拒否等のその他例外 = 'dead' (プロセス不在)
+ */
+async function probeDaemon(
   fetch: typeof globalThis.fetch,
   port: number,
   timeoutMs: number,
   abortSignal?: AbortSignal,
-): Promise<boolean> {
+): Promise<DaemonProbeStatus> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const onAbort = () => controller.abort();
@@ -92,13 +100,25 @@ async function isDaemonAlive(
       body: JSON.stringify({ query: '', files: [] }),
       signal: controller.signal,
     });
-    return true;
-  } catch {
-    return false;
+    return 'ready';
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      return 'busy';
+    }
+    return 'dead';
   } finally {
     clearTimeout(timer);
     abortSignal?.removeEventListener('abort', onAbort);
   }
+}
+
+async function isDaemonAlive(
+  fetch: typeof globalThis.fetch,
+  port: number,
+  timeoutMs: number,
+  abortSignal?: AbortSignal,
+): Promise<boolean> {
+  return (await probeDaemon(fetch, port, timeoutMs, abortSignal)) === 'ready';
 }
 
 function waitForDaemon(
@@ -159,7 +179,9 @@ function waitForDaemon(
   });
 }
 
-export async function ensureDaemon(options: EnsureDaemonOptions): Promise<{ port: number }> {
+export async function ensureDaemon(
+  options: EnsureDaemonOptions,
+): Promise<{ port: number; indexReady: boolean }> {
   const {
     repoRoot,
     env,
@@ -178,8 +200,13 @@ export async function ensureDaemon(options: EnsureDaemonOptions): Promise<{ port
 
   const existingState = await readDaemonStateFile(fs, statePath);
   if (existingState) {
-    if (await isDaemonAlive(fetch, existingState.port, DEFAULT_HEALTH_CHECK_TIMEOUT_MS)) {
-      return { port: existingState.port };
+    const status = await probeDaemon(fetch, existingState.port, DEFAULT_HEALTH_CHECK_TIMEOUT_MS);
+    if (status === 'ready') {
+      return { port: existingState.port, indexReady: true };
+    }
+    if (status === 'busy') {
+      // TCP は生存するが応答が遅い (索引構築中など)。再 spawn は repo ロックで失敗するため再利用する。
+      return { port: existingState.port, indexReady: false };
     }
     logger.warn(
       `既存の Nexus daemon (pid=${existingState.pid}, port=${existingState.port}) に接続できません。新規に起動します。`,
@@ -256,7 +283,7 @@ export async function ensureDaemon(options: EnsureDaemonOptions): Promise<{ port
         await fs.mkdir(dirname(statePath), { recursive: true });
         await fs.writeFile(statePath, serializeDaemonState(state));
 
-        return { port };
+        return { port, indexReady: false };
       } catch (err) {
         const finalErr = exitError ?? err;
         if (attempt !== MAX_RETRIES) {

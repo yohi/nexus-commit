@@ -73,7 +73,7 @@ graph LR
    nexus
    ```
 
-   または、`--auto-start-nexus` フラグ（または `NEXUS_AUTO_START=1`）を指定すると、`nxc` 実行時に Nexus daemon を自動的に起動・再利用します。対話モードでのみ有効で、ポート番号は自動的に管理されます。手動で終了させる場合は `kill $(node -p "require('./.nexus/nxc-daemon.json').pid")` を実行してください。
+   または、`--auto-start-nexus` フラグ（または `NEXUS_AUTO_START=1`）を指定すると、`nxc` 実行時に Nexus daemon を自動的に起動・再利用します。対話モードでのみ有効で、ポート番号は自動的に管理されます。手動で終了させる場合は `kill $(node -p "require('./.nexus/nxc-daemon.json').pid")` を実行してください。なお、初回起動直後は Nexus がバックグラウンドでインデックスを構築するため、その実行ではコンテキストなしで生成し（LLM タイムアウトも自動的に延長されます）、次回以降の実行から周辺コードの文脈が反映されます（詳細は下記「トラブルシューティング」を参照）。
 2. **nexus-commit の実行**
 
    Nexus サーバー起動後、以下のいずれかの方法で実行できます。
@@ -179,6 +179,21 @@ npx @yohi/nexus-commit を使って、変更内容に基づいた Conventional C
 msg=$(nxc --dry-run --non-interactive --no-context)
 echo "Generated: $msg"
 ```
+
+### 🩺 トラブルシューティング
+
+#### `--auto-start-nexus` 実行時に生成がタイムアウトする / コンテキストが取得できない
+
+Nexus daemon は初回インデックス構築時に埋め込みモデル（`nomic-embed-text`）で Ollama を集中的に使用します。コミット生成用の LLM（例: `qwen2.5-coder`）が同じ Ollama インスタンスを共有していると、インデックス構築と競合して生成が遅くなり、タイムアウトすることがあります。
+
+このため `nxc` は **daemon を新規起動した実行（`--auto-start-nexus` で daemon が関与している場合）では LLM タイムアウトを自動的に最低 180000ms まで引き上げます**。さらに、インデックス構築が未完了の場合はコンテキスト検索もスキップします。コンテキストは次回以降の実行（インデックス構築済みの daemon を再利用）から反映されます。
+
+それでも生成が遅い・タイムアウトする場合の対処:
+
+- **インデックス構築の完了を待つ**: 初回構築が終われば以降の実行では競合が解消されます（`nxc --doctor` で daemon の稼働状況を確認できます）。
+- **Ollama の並列度を上げる**: `OLLAMA_NUM_PARALLEL` を 2 以上に設定すると、埋め込みと生成を同時に処理しやすくなります。
+- **生成タイムアウトを延長する**: `NEXUS_COMMIT_LLM_TIMEOUT_MS`（既定 60000ms）を引き上げます。
+- **埋め込み用に別の Ollama を使う**: Nexus 側で埋め込みエンドポイントを分離すると、生成用 Ollama との競合を避けられます。
 
 ## 📖 その他
 - [SPEC.md](./SPEC.md): 詳細な仕様・アーキテクチャ
