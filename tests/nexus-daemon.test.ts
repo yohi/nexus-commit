@@ -473,3 +473,113 @@ describe('ensureDaemon', () => {
     );
   });
 });
+
+describe('ensureDaemon indexReady / 死亡・多忙の区別', () => {
+  const repoRoot = '/repo';
+  const statePath = '/repo/.nexus/nxc-daemon.json';
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
+  test('既存 daemon が応答すれば indexReady=true で再利用する', async () => {
+    const fs = createMockFs({
+      [statePath]: '{"port":8080,"pid":12345,"startedAt":"2026-06-15T10:00:00.000Z"}',
+    });
+    const mockFetch = createMockFetch([
+      { ok: true, status: 200, statusText: 'OK', text: async () => '' },
+    ]);
+    const spawn = vi.fn();
+    const result = await ensureDaemon({
+      repoRoot,
+      env: {},
+      fs,
+      fetch: mockFetch,
+      spawn: spawn as unknown as typeof import('node:child_process').spawn,
+      logger: createMockLogger(),
+      nodeVersion: '24.0.0',
+    });
+    expect(result.port).toBe(8080);
+    expect(result.indexReady).toBe(true);
+    expect(spawn).not.toHaveBeenCalled();
+  });
+
+  test('既存 daemon が多忙(タイムアウト)なら再起動せず indexReady=false で再利用する', async () => {
+    const fs = createMockFs({
+      [statePath]: '{"port":8080,"pid":12345,"startedAt":"2026-06-15T10:00:00.000Z"}',
+    });
+    const abortError = Object.assign(new Error('aborted'), { name: 'AbortError' });
+    const mockFetch = createMockFetch([abortError]);
+    const spawn = vi.fn();
+    const result = await ensureDaemon({
+      repoRoot,
+      env: {},
+      fs,
+      fetch: mockFetch,
+      spawn: spawn as unknown as typeof import('node:child_process').spawn,
+      logger: createMockLogger(),
+      nodeVersion: '24.0.0',
+    });
+    expect(result.port).toBe(8080);
+    expect(result.indexReady).toBe(false);
+    expect(spawn).not.toHaveBeenCalled();
+    expect(fs.unlink).not.toHaveBeenCalled();
+  });
+
+  test('既存 daemon が接続拒否(死亡)なら状態削除して新規起動し indexReady=false', async () => {
+    const fs = createMockFs({
+      [statePath]: '{"port":8080,"pid":12345,"startedAt":"2026-06-15T10:00:00.000Z"}',
+    });
+    const fetch = createMockFetch([
+      new Error('ECONNREFUSED'),
+      { ok: true, status: 200, statusText: 'OK', text: async () => '' },
+    ]);
+    const child = createMockChildProcess({ pid: 54321 });
+    const spawn = vi.fn(() => child);
+    const resultPromise = ensureDaemon({
+      repoRoot,
+      env: {},
+      fs,
+      fetch,
+      spawn: spawn as unknown as typeof import('node:child_process').spawn,
+      getFreePort: async () => 9090,
+      findBinary: async () => ({ binary: '/bin/nexus', isNpxFallback: false }),
+      logger: createMockLogger(),
+      readyIntervalMs: 10,
+      nodeVersion: '24.0.0',
+    });
+    resultPromise.catch(() => {});
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await resultPromise;
+    expect(fs.unlink).toHaveBeenCalledWith(statePath);
+    expect(spawn).toHaveBeenCalled();
+    expect(result.port).toBe(9090);
+    expect(result.indexReady).toBe(false);
+  });
+
+  test('状態ファイルが無い新規起動では indexReady=false', async () => {
+    const fs = createMockFs();
+    const child = createMockChildProcess({ pid: 54321 });
+    const spawn = vi.fn(() => child);
+    const resultPromise = ensureDaemon({
+      repoRoot,
+      env: {},
+      fs,
+      fetch: createMockFetch([{ ok: true, status: 200, statusText: 'OK', text: async () => '' }]),
+      spawn: spawn as unknown as typeof import('node:child_process').spawn,
+      getFreePort: async () => 9090,
+      findBinary: async () => ({ binary: '/bin/nexus', isNpxFallback: false }),
+      logger: createMockLogger(),
+      readyIntervalMs: 10,
+      nodeVersion: '24.0.0',
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await resultPromise;
+    expect(result.indexReady).toBe(false);
+  });
+});
