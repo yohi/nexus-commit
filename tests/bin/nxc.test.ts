@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as clack from '@clack/prompts';
 import { logger } from '../../src/logger.js';
-import { main } from '../../src/bin/nxc.js';
+import { main, INDEXING_LLM_TIMEOUT_FLOOR_MS } from '../../src/bin/nxc.js';
 import type { GitClient, NexusClientPort, LlmClientPort } from '../../src/types.js';
 
 const mockSpinner = {
@@ -235,7 +235,7 @@ describe('nxc main', () => {
     vi.mocked(mockLlm.chat).mockResolvedValue('feat: test commit');
     vi.mocked(clack.select).mockResolvedValue('commit');
 
-    const ensureDaemon = vi.fn().mockResolvedValue({ port: 9999 });
+    const ensureDaemon = vi.fn().mockResolvedValue({ port: 9999, indexReady: false });
     const getRepoRoot = vi.fn().mockResolvedValue('/repo');
     const { HttpNexusClient } = await import('../../src/nexus-client.js');
 
@@ -366,5 +366,109 @@ describe('nxc main', () => {
     expect(code).toBe(0);
     expect(ensureDaemon).toHaveBeenCalled();
     expect(HttpNexusClient).toHaveBeenCalledWith('http://localhost:8080');
+  });
+
+  it('indexReady=false の場合はコンテキスト検索をスキップし LLM タイムアウトを延長する', async () => {
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'test diff', files: ['test.ts'] });
+    vi.mocked(mockLlm.chat).mockResolvedValue('feat: test commit');
+    vi.mocked(clack.select).mockResolvedValue('commit');
+    const searchSpy = vi.mocked(mockNexus.search).mockResolvedValue([]);
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+    const ensureDaemon = vi.fn().mockResolvedValue({ port: 9999, indexReady: false });
+    const getRepoRoot = vi.fn().mockResolvedValue('/repo');
+
+    const original = process.env.CI;
+    delete process.env.CI;
+    try {
+      await main(['--auto-start-nexus', '--dry-run'], {
+        git: mockGit,
+        nexus: mockNexus,
+        llm: mockLlm,
+        ensureDaemon,
+        getRepoRoot,
+      });
+    } finally {
+      if (original === undefined) {
+        delete process.env.CI;
+      } else {
+        process.env.CI = original;
+      }
+    }
+
+    expect(searchSpy).not.toHaveBeenCalled();
+    expect(vi.mocked(mockLlm.chat).mock.calls[0]?.[1]).toEqual({
+      timeoutMs: INDEXING_LLM_TIMEOUT_FLOOR_MS,
+    });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('インデックス構築中'));
+    warnSpy.mockRestore();
+  });
+
+  it('indexReady=true でもコンテキストを使用しつつ daemon 起動時は LLM タイムアウトを延長する', async () => {
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'test diff', files: ['test.ts'] });
+    vi.mocked(mockLlm.chat).mockResolvedValue('feat: test commit');
+    vi.mocked(clack.select).mockResolvedValue('commit');
+    const searchSpy = vi.mocked(mockNexus.search).mockResolvedValue([]);
+
+    const ensureDaemon = vi.fn().mockResolvedValue({ port: 9999, indexReady: true });
+    const getRepoRoot = vi.fn().mockResolvedValue('/repo');
+
+    const original = process.env.CI;
+    delete process.env.CI;
+    try {
+      await main(['--auto-start-nexus', '--dry-run'], {
+        git: mockGit,
+        nexus: mockNexus,
+        llm: mockLlm,
+        ensureDaemon,
+        getRepoRoot,
+      });
+    } finally {
+      if (original === undefined) {
+        delete process.env.CI;
+      } else {
+        process.env.CI = original;
+      }
+    }
+
+    expect(searchSpy).toHaveBeenCalled();
+    expect(vi.mocked(mockLlm.chat).mock.calls[0]?.[1]).toEqual({
+      timeoutMs: INDEXING_LLM_TIMEOUT_FLOOR_MS,
+    });
+  });
+
+  it('自動起動で解決したポートが Nexus 警告メッセージに反映される', async () => {
+    vi.mocked(mockGit.isRepo).mockResolvedValue(true);
+    vi.mocked(mockGit.getDiff).mockResolvedValue({ diff: 'test diff', files: ['test.ts'] });
+    vi.mocked(mockLlm.chat).mockResolvedValue('feat: test commit');
+    vi.mocked(clack.select).mockResolvedValue('commit');
+    vi.mocked(mockNexus.search).mockRejectedValue(new Error('Nexus busy'));
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+    const ensureDaemon = vi.fn().mockResolvedValue({ port: 41593, indexReady: true });
+    const getRepoRoot = vi.fn().mockResolvedValue('/repo');
+
+    const original = process.env.CI;
+    delete process.env.CI;
+    try {
+      await main(['--auto-start-nexus', '--dry-run'], {
+        git: mockGit,
+        nexus: mockNexus,
+        llm: mockLlm,
+        ensureDaemon,
+        getRepoRoot,
+      });
+    } finally {
+      if (original === undefined) {
+        delete process.env.CI;
+      } else {
+        process.env.CI = original;
+      }
+    }
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('http://127.0.0.1:41593'));
+    warnSpy.mockRestore();
   });
 });

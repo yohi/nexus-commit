@@ -48,7 +48,7 @@ interface Deps {
   git: GitClient;
   nexus: NexusClientPort;
   llm: LlmClientPort;
-  ensureDaemon?: (options: EnsureDaemonOptions) => Promise<{ port: number }>;
+  ensureDaemon?: (options: EnsureDaemonOptions) => Promise<{ port: number; indexReady: boolean }>;
   getRepoRoot?: () => Promise<string>;
 }
 
@@ -71,32 +71,47 @@ function isCi(): boolean {
   return process.env.CI === 'true' || process.env.CI === '1';
 }
 
-async function tryAutoStartNexus(config: Config, overrides?: Partial<Deps>): Promise<string> {
+/**
+ * 初回インデックス構築中は Nexus daemon が埋め込み処理で LLM と同じ Ollama を共有し、
+ * チャット生成が枯渇しやすい。この間は LLM タイムアウトの下限を引き上げて早期失敗を防ぐ。
+ */
+export const INDEXING_LLM_TIMEOUT_FLOOR_MS = 180_000;
+
+interface AutoStartResult {
+  nexusUrl: string;
+  indexReady: boolean;
+  daemonEngaged: boolean;
+}
+
+async function tryAutoStartNexus(
+  config: Config,
+  overrides?: Partial<Deps>,
+): Promise<AutoStartResult> {
   if (process.env.NEXUS_API_URL) {
-    return config.nexusUrl;
+    return { nexusUrl: config.nexusUrl, indexReady: true, daemonEngaged: false };
   }
   if (!config.autoStartNexus) {
-    return config.nexusUrl;
+    return { nexusUrl: config.nexusUrl, indexReady: true, daemonEngaged: false };
   }
   if (config.nonInteractive || isCi()) {
     logger.warn(
       '--auto-start-nexus は対話モードでのみ有効です。CI/非対話環境では既存の Nexus サーバーに接続します。',
     );
-    return config.nexusUrl;
+    return { nexusUrl: config.nexusUrl, indexReady: true, daemonEngaged: false };
   }
 
   try {
     const repoRoot = await (overrides?.getRepoRoot ?? getRepoRoot)();
-    const { port } = await (overrides?.ensureDaemon ?? ensureDaemon)({
+    const { port, indexReady } = await (overrides?.ensureDaemon ?? ensureDaemon)({
       repoRoot,
       env: process.env,
       nodeVersion: process.versions.node,
     });
-    return `http://127.0.0.1:${port}`;
+    return { nexusUrl: `http://127.0.0.1:${port}`, indexReady, daemonEngaged: true };
   } catch (err) {
     logger.warn(`Nexus daemon の自動起動に失敗しました: ${errorToString(err)}`);
     logger.warn('   既存の Nexus サーバーまたはコンテキストなしで続行します。');
-    return config.nexusUrl;
+    return { nexusUrl: config.nexusUrl, indexReady: true, daemonEngaged: false };
   }
 }
 
@@ -359,23 +374,49 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
     logger.warn('   デフォルトプロンプトで続行します。');
   }
 
-  const nexusUrl = await tryAutoStartNexus(config, overrides);
-  const deps = createDeps(config, overrides, { nexusUrl });
+  const autoStart = await tryAutoStartNexus(config, overrides);
+  let effectiveConfig: Config = { ...config, nexusUrl: autoStart.nexusUrl };
+  if (autoStart.daemonEngaged) {
+    // 自動起動した daemon はインデックス構築で Ollama を共有し生成が遅くなりうるため、
+    // LLM タイムアウトの下限を引き上げて早期失敗を防ぐ。
+    effectiveConfig = {
+      ...effectiveConfig,
+      llmTimeoutMs: Math.max(config.llmTimeoutMs, INDEXING_LLM_TIMEOUT_FLOOR_MS),
+    };
+    if (!autoStart.indexReady) {
+      // インデックス未完了の daemon は実検索を捗けないため、今回はコンテキストをスキップする。
+      effectiveConfig = { ...effectiveConfig, useContext: false };
+      logger.warn(
+        'Nexus daemon のインデックス構築中です。今回はコンテキストなしで生成します（次回以降の実行で文脈が反映されます）。',
+      );
+      logger.warn(
+        '   インデックス構築が LLM と同じ Ollama を共有するため、生成に時間がかかる場合があります。',
+      );
+    }
+  }
+  const deps = createDeps(effectiveConfig, overrides);
   try {
     if (!(await deps.git.isRepo())) {
       logger.error('Not a git repository');
       return 2;
     }
 
-    const { diff, files } = await deps.git.getDiff(config.diffMode);
+    const { diff, files } = await deps.git.getDiff(effectiveConfig.diffMode);
     if (!diff.trim()) {
       logger.info('変更がありません');
       return 0;
     }
 
-    if (config.nonInteractive) {
-      const { message } = await generate(config, deps, diff, files, undefined, customSuffix);
-      if (config.dryRun) {
+    if (effectiveConfig.nonInteractive) {
+      const { message } = await generate(
+        effectiveConfig,
+        deps,
+        diff,
+        files,
+        undefined,
+        customSuffix,
+      );
+      if (effectiveConfig.dryRun) {
         process.stdout.write(`${message}\n`);
       } else {
         await deps.git.commit(message);
@@ -383,7 +424,7 @@ export async function main(argv: string[], overrides?: Partial<Deps>): Promise<n
       return 0;
     }
 
-    return await interactive(config, deps, diff, files, customSuffix);
+    return await interactive(effectiveConfig, deps, diff, files, customSuffix);
   } catch (err) {
     const exitCode = (err as { exitCode?: number }).exitCode;
     if (exitCode !== undefined) {
