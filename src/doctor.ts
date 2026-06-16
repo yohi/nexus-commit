@@ -246,7 +246,7 @@ export async function runDoctor(config: Config, deps: DoctorDeps): Promise<Docto
       title: 'Nexus daemon status',
       status: 'ok',
       detail: `pid=${daemonState.pid}, port=${daemonState.port}`,
-      hint: 'Nexus のインデックス構築は LLM 生成と同じ Ollama を共有します。初回構築中は生成が遅くなる場合があります。',
+      hint: 'Nexus と LLM 生成は同じ Ollama を共有しています。競合が発生した場合は生成が遅くなることがあります。詳細は README のトラブルシューティングを参照。',
     });
   } else {
     results.push({
